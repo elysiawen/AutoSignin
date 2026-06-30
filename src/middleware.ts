@@ -15,8 +15,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check session token
-  const isSecure = req.nextUrl.protocol === 'https';
+  // Check session token - 从代理头判断是否 HTTPS
+  const proto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol;
+  const isSecure = proto === 'https';
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,

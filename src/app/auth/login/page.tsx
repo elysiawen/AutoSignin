@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Gamepad2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
@@ -37,8 +36,7 @@ export default function LoginPage() {
       if (result?.error) {
         showError('邮箱或密码错误');
       } else {
-        router.push('/dashboard');
-        router.refresh();
+        window.location.href = '/dashboard';
       }
     } catch {
       showError('登录失败，请稍后重试');
