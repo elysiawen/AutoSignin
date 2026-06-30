@@ -77,6 +77,8 @@ export const FORUM_LIST: Record<number, { id: string; forumId: string; name: str
   5: { id: '5', forumId: '34', name: '大别野' },
   6: { id: '6', forumId: '52', name: '崩坏：星穹铁道' },
   8: { id: '8', forumId: '57', name: '绝区零' },
+  9: { id: '9', forumId: '948', name: '崩坏：星穹铁道-起源' },
+  10: { id: '10', forumId: '950', name: '星穹铁道-星落谷' },
 };
 
 // 游戏 ID 到配置名的映射

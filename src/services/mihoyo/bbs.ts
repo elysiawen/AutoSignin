@@ -5,7 +5,12 @@ import { generateDS, generateDS2, sleep, randomInt, MIHYO_BBS_VERSION } from './
 /**
  * 创建使用 stoken cookie 的客户端（用于签到/看帖/点赞/分享）
  */
-function createMihoyoStokenClient(stokenCookie: string): AxiosInstance {
+function createMihoyoStokenClient(
+  stokenCookie: string,
+  deviceId?: string,
+  deviceName?: string,
+  deviceModel?: string,
+): AxiosInstance {
   return axios.create({
     timeout: 30000,
     headers: {
@@ -24,6 +29,9 @@ function createMihoyoStokenClient(stokenCookie: string): AxiosInstance {
       'Connection': 'Keep-Alive',
       'Accept-Encoding': 'gzip',
       'User-Agent': 'okhttp/4.9.3',
+      ...(deviceId ? { 'x-rpc-device_id': deviceId } : {}),
+      ...(deviceName ? { 'x-rpc-device_name': deviceName } : {}),
+      ...(deviceModel ? { 'x-rpc-device_model': deviceModel } : {}),
     },
   });
 }
@@ -314,13 +322,16 @@ export async function executeBbsTasks(
     doLike?: boolean;
     doShare?: boolean;
     cookie?: string; // 普通 cookie，用于获取任务列表
+    deviceId?: string;
+    deviceName?: string;
+    deviceModel?: string;
   } = {}
 ): Promise<BbsTaskResult> {
-  const { doSign = true, doRead = true, doLike = true, doShare = true, cookie } = options;
+  const { doSign = true, doRead = true, doLike = true, doShare = true, cookie, deviceId, deviceName, deviceModel } = options;
 
   try {
     // 创建使用 stoken cookie 的客户端（用于签到/看帖/点赞/分享）
-    const stokenClient = createMihoyoStokenClient(stokenCookie);
+    const stokenClient = createMihoyoStokenClient(stokenCookie, deviceId, deviceName, deviceModel);
 
     // 获取任务状态（使用普通 cookie）
     const taskListCookie = cookie || stokenCookie;
@@ -337,6 +348,7 @@ export async function executeBbsTasks(
     }
 
     const results: string[] = [];
+    let hasError = false;
 
     // 社区签到（使用 stoken client）
     if (doSign && !taskState.sign) {
@@ -346,6 +358,7 @@ export async function executeBbsTasks(
 
         await sleep(randomInt(3, 8) * 1000);
         const result = await signForum(stokenClient, forum.id);
+        if (!result.success) hasError = true;
         results.push(`${forum.name}: ${result.message}`);
       }
     }
@@ -387,7 +400,7 @@ export async function executeBbsTasks(
     const finalState = await getTasksList(taskListClient, taskListCookie);
 
     return {
-      success: true,
+      success: !hasError,
       message: results.join('\n') || '任务执行完成',
       coinsInfo: finalState.coinsInfo,
     };

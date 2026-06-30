@@ -3,7 +3,7 @@ import { TaskType } from '@/generated/prisma/enums';
 import { decrypt } from '@/lib/utils';
 import { createLogger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
-import { sleep, randomInt } from './mihoyo/crypto';
+import { sleep, randomInt, getDeviceId } from './mihoyo/crypto';
 import { createMihoyoClient, createHoyolabClient, ACT_IDS } from './mihoyo/api';
 import { executeGameCheckin, executeOsCheckin } from './mihoyo/checkin';
 import { executeBbsTasks } from './mihoyo/bbs';
@@ -412,18 +412,29 @@ async function executeMihoyobbsTask(
     };
   }
 
-  const stokenCookie = `stuid=${uid};stoken=${stoken}`;
-  log.debug('构建 stoken cookie', { uid });
+  // 从 cookie 中提取 mid（v2_stoken 需要）
+  const midMatch = cookie.match(/(account_mid_v2|ltmid_v2|mid)=(.*?)(?:;|$)/);
+  const mid = midMatch ? midMatch[2] : '';
+  const stokenCookie = mid
+    ? `stuid=${uid};stoken=${stoken};mid=${mid}`
+    : `stuid=${uid};stoken=${stoken}`;
+  log.debug('构建 stoken cookie', { uid, hasMid: !!mid });
 
   // 默认签到的社区列表
   const forumIds = [5, 2]; // 大别野、原神
+
+  // 从 cookie 生成设备信息（与原项目一致）
+  const deviceId = getDeviceId(cookie);
 
   const options = {
     doSign: taskType === 'MIYOUSHE_CHECKIN' || taskType === 'MIYOUSHE_COINS',
     doRead: taskType === 'MIYOUSHE_READ' || taskType === 'MIYOUSHE_COINS',
     doLike: taskType === 'MIYOUSHE_LIKE' || taskType === 'MIYOUSHE_COINS',
     doShare: taskType === 'MIYOUSHE_SHARE' || taskType === 'MIYOUSHE_COINS',
-    cookie: cookie, // 传递普通 cookie 用于获取任务列表
+    cookie: cookie,
+    deviceId,
+    deviceName: 'Xiaomi MI 6',
+    deviceModel: 'Xiaomi MI 6',
   };
 
   log.info('执行米游社任务', { taskType, options });
