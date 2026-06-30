@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== 用户系统 ====================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  tasks    Task[]
+  logs     TaskLog[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ==================== 平台账号 ====================
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String
+  platform  Platform
+  name      String   // 用户自定义名称，如"我的原神号"
+  cookie    String   // 加密存储
+  stoken    String?  // 加密存储
+  uid       String?  // 平台用户ID
+  mid       String?  // 米游社 mid
+  extra     Json?    // 额外配置（设备信息等）
+  cronExpr  String?  // 账号级别的定时表达式
+  isActive  Boolean  @default(true)  // 账号级别的启用状态
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([userId, platform])
+}
+
+enum Platform {
+  MIYOUSHE  // 米游社（国服）
+  HOYOLAB   // HoYoLAB（国际服）
+  KUJIEQU   // 库街区
+  TAYGEDO   // 塔吉多
+  YIHUAN    // 异环（后续扩展）
+}
+
+// ==================== 签到任务 ====================
+
+model Task {
+  id        String   @id @default(cuid())
+  userId    String
+  accountId String
+  name      String?  // 用户自定义名称
+  type      TaskType
+  config    Json?    // 任务特定配置
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  logs    TaskLog[]
+
+  @@index([userId])
+  @@index([accountId])
+}
+
+enum TaskType {
+  // 米游社社区任务
+  MIYOUSHE_CHECKIN  // 社区签到
+  MIYOUSHE_READ     // 看帖
+  MIYOUSHE_LIKE     // 点赞
+  MIYOUSHE_SHARE    // 分享
+  MIYOUSHE_COINS    // 获取米游币（组合任务，包含以上所有）
+
+  // 国服游戏签到
+  GENSHIN_CN         // 原神
+  HONKAI2_CN         // 崩坏学园2
+  HONKAI3RD_CN       // 崩坏3
+  TEARS_OF_THEMIS_CN // 未定事件簿
+  HONKAI_SR_CN       // 崩坏：星穹铁道
+  ZZZ_CN             // 绝区零
+
+  // 国际服游戏签到
+  GENSHIN_OS         // 原神
+  HONKAI3RD_OS       // 崩坏3
+  HONKAI_SR_OS       // 崩坏：星穹铁道
+  ZZZ_OS             // 绝区零
+
+  // 云游戏签到
+  CLOUD_GENSHIN      // 云原神
+  CLOUD_ZZZ          // 云绝区零
+
+  // 库街区任务
+  KUJIEQU_WUWA       // 鸣潮签到
+  KUJIEQU_PGR        // 战双帕弥什签到
+  KUJIEQU_FORUM      // 库街区论坛任务（签到+浏览+点赞+分享）
+
+  // 塔吉多任务
+  TAYGEDO_SIGNIN     // APP社区签到
+  TAYGEDO_GAMESIGNIN // 游戏签到
+  TAYGEDO_COINS      // 金币任务（BBS签到+浏览+点赞+分享）
+  TAYGEDO_CLOUD      // 云异环时长签到
+}
+
+// ==================== 执行日志 ====================
+
+model TaskLog {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String
+  status    LogStatus
+  message   String?  // 执行摘要（简短结果）
+  details   String?  // 完整执行日志
+  reward    String?  // 获得的奖励信息
+  duration  Int?     // 执行耗时（毫秒）
+  createdAt DateTime @default(now())
+
+  user User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+enum LogStatus {
+  SUCCESS   // 执行成功
+  FAILED    // 执行失败
+  SKIPPED   // 已签到/已完成，跳过
+  CAPTCHA   // 触发验证码
+}
+
+// ==================== 系统设置 ====================
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  @@index([key])
+}

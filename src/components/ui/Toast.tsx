@@ -1,0 +1,105 @@
+'use client';
+
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+
+type ToastType = 'success' | 'error' | 'info';
+
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+  isExiting?: boolean;
+  isVisible?: boolean;
+}
+
+interface ToastContextType {
+  addToast: (message: string, type: ToastType, duration?: number) => string;
+  updateToast: (id: string, message: string, type: ToastType) => void;
+  removeToast: (id: string) => void;
+  success: (message: string) => void;
+  error: (message: string) => void;
+  info: (message: string) => void;
+}
+
+const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+export function useToast() {
+  const context = useContext(ToastContext);
+  if (!context) {
+    return {
+      addToast: () => '',
+      updateToast: () => {},
+      removeToast: () => {},
+      success: () => {},
+      error: () => {},
+      info: () => {},
+    };
+  }
+  return context;
+}
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.map(t => (t.id === id ? { ...t, isExiting: true } : t)));
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 300);
+  }, []);
+
+  const addToast = useCallback(
+    (message: string, type: ToastType, duration: number = 3000) => {
+      const id = Math.random().toString(36).substring(2, 11);
+      setToasts(prev => [...prev, { id, message, type, isVisible: false }]);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setToasts(prev => prev.map(t => (t.id === id ? { ...t, isVisible: true } : t)));
+        });
+      });
+
+      if (duration > 0 && duration !== Infinity) {
+        setTimeout(() => {
+          removeToast(id);
+        }, duration);
+      }
+      return id;
+    },
+    [removeToast]
+  );
+
+  const updateToast = useCallback((id: string, message: string, type: ToastType) => {
+    setToasts(prev => prev.map(t => (t.id === id ? { ...t, message, type } : t)));
+  }, []);
+
+  const success = useCallback((message: string) => addToast(message, 'success'), [addToast]);
+  const error = useCallback((message: string) => addToast(message, 'error'), [addToast]);
+  const info = useCallback((message: string) => addToast(message, 'info'), [addToast]);
+
+  return (
+    <ToastContext.Provider value={{ addToast, updateToast, removeToast, success, error, info }}>
+      {children}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2 pointer-events-none">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto min-w-[200px] max-w-sm px-4 py-3 rounded-xl shadow-lg border flex items-center gap-3 transition-all duration-300 ease-out ${
+              toast.isExiting || !toast.isVisible ? 'opacity-0 -translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'
+            } ${
+              toast.type === 'success' ? 'bg-card border-green-200 text-green-700 dark:border-green-800 dark:text-green-300' : ''
+            } ${toast.type === 'error' ? 'bg-card border-red-200 text-red-700 dark:border-red-800 dark:text-red-300' : ''} ${
+              toast.type === 'info' ? 'bg-card border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300' : ''
+            }`}
+          >
+            <span className="text-xl">
+              {toast.type === 'success' && '✅'}
+              {toast.type === 'error' && '❌'}
+              {toast.type === 'info' && 'ℹ️'}
+            </span>
+            <p className="text-sm font-medium">{toast.message}</p>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
