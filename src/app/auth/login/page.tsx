@@ -7,7 +7,6 @@ import { Gamepad2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
-  const router = useRouter();
   const { error: showError } = useToast();
 
   const [email, setEmail] = useState('');
