@@ -6,9 +6,10 @@ import { HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 interface HelpGuideProps {
   platform: 'MIYOUSHE' | 'HOYOLAB' | 'KUJIEQU' | 'TAYGEDO';
   field: 'cookie' | 'stoken' | 'cloudToken' | 'token';
+  onOpenKuroLogin?: () => void;
 }
 
-export default function HelpGuide({ platform, field }: HelpGuideProps) {
+export default function HelpGuide({ platform, field, onOpenKuroLogin }: HelpGuideProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getContent = (): { title: string; steps: string[]; methods?: string[]; links?: { text: string; url: string }[] } => {
@@ -94,18 +95,12 @@ export default function HelpGuide({ platform, field }: HelpGuideProps) {
       return {
         title: '获取库街区 Token',
         methods: [
-          '▸ 方法一：使用 Kuro_login 项目获取（推荐）',
+          '▸ 方法一：使用内置登录工具（推荐）',
           '▸ 方法二：手机抓包获取',
         ],
-        steps: [
-          '手机安装库街区 App 并登录',
-          '使用抓包工具（如 Stream、HttpCanary）',
-          '在 App 中任意操作（如浏览帖子）',
-          '找到 api.kurobbs.com 的请求',
-          '在请求头中找到 token 字段并复制',
-        ],
+        steps: [],
         links: [
-          { text: 'Kuro_login（获取 Token）', url: 'https://github.com/mxyooR/Kuro_login' },
+          { text: 'Kuro_login（GitHub）', url: 'https://github.com/mxyooR/Kuro_login' },
           { text: '库街区官网', url: 'https://www.kurobbs.com/' },
         ],
       };
@@ -130,7 +125,6 @@ export default function HelpGuide({ platform, field }: HelpGuideProps) {
       {isExpanded && (
         <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border text-xs">
           <p className="font-medium text-text-secondary mb-2">{content.title}</p>
-          {/* 方法列表（无数字） */}
           {content.methods && content.methods.length > 0 && (
             <div className="space-y-1 text-text-tertiary mb-2">
               {content.methods.map((method, i) => (
@@ -138,12 +132,23 @@ export default function HelpGuide({ platform, field }: HelpGuideProps) {
               ))}
             </div>
           )}
-          {/* 步骤列表（带数字） */}
           <ol className="space-y-1 text-text-tertiary list-decimal list-inside">
             {content.steps.map((step, i) => (
               <li key={i}>{step}</li>
             ))}
           </ol>
+          {/* 库街区内置登录工具按钮 */}
+          {platform === 'KUJIEQU' && field === 'token' && onOpenKuroLogin && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={onOpenKuroLogin}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+              >
+                打开登录工具
+              </button>
+            </div>
+          )}
           {content.links && content.links.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {content.links.map((link, i) => (

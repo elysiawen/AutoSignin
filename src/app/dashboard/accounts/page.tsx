@@ -7,6 +7,7 @@ import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
 import HelpGuide from '@/components/HelpGuide';
+import KuroLoginModal from '@/components/tools/KuroLoginModal';
 import { platformNames, platformIcons, platformColors } from '@/lib/icons';
 
 interface Account {
@@ -62,6 +63,7 @@ export default function AccountsPage() {
     taygedoLaohuUserId: '',
   });
   const [showOptional, setShowOptional] = useState(false);
+  const [showKuroModal, setShowKuroModal] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -507,9 +509,9 @@ export default function AccountsPage() {
                 }
                 rows={3}
                 className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary resize-none"
-                placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : '库街区 Token（通过 Kuro_login 获取）'}
+                placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : '库街区 Token（通过登录工具获取）'}
               />
-              <HelpGuide platform="KUJIEQU" field="token" />
+              <HelpGuide platform="KUJIEQU" field="token" onOpenKuroLogin={() => setShowKuroModal(true)} />
             </div>
           )}
 
@@ -867,6 +869,23 @@ export default function AccountsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* 库街区登录弹窗 */}
+      <KuroLoginModal
+        open={showKuroModal}
+        onClose={() => setShowKuroModal(false)}
+        onFill={(data) => {
+          setFormData((prev) => ({
+            ...prev,
+            kuroToken: data.token,
+            kuroUserId: data.userId,
+            devcode: data.devcode,
+            distinctId: data.distinctId,
+            wwroleId: data.roleId || '',
+          }));
+          setShowOptional(true);
+        }}
+      />
     </div>
   );
 }
