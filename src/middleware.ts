@@ -5,11 +5,9 @@ import { getToken } from 'next-auth/jwt';
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Public routes - no auth needed
+  // Static assets and API auth routes - skip
   if (
-    pathname.startsWith('/auth') ||
     pathname.startsWith('/api/auth') ||
-    pathname === '/' ||
     pathname.startsWith('/icons') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
@@ -17,10 +15,25 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check session token (works in edge runtime, no Prisma dependency)
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  // Check session token
+  const isSecure = req.nextUrl.protocol === 'https';
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token',
+  });
   const isLoggedIn = !!token;
   const role = token?.role as string | undefined;
+
+  // Logged in user visiting login/register/home -> redirect to dashboard
+  if (isLoggedIn && (pathname.startsWith('/auth') || pathname === '/')) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // Public routes - no auth needed
+  if (pathname.startsWith('/auth') || pathname === '/') {
+    return NextResponse.next();
+  }
 
   // Not logged in -> redirect to login
   if (!isLoggedIn) {
