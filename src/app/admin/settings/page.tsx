@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Database, Loader2, Plus, Trash2, Play, Save, Activity, UserPlus, UserX } from 'lucide-react';
+import { Database, Loader2, Plus, Trash2, Play, Save, Activity, UserPlus, UserX, Mail, MailX } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
 
@@ -29,6 +29,8 @@ export default function AdminSettingsPage() {
   const [newValue, setNewValue] = useState('');
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [togglingRegistration, setTogglingRegistration] = useState(false);
+  const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(true);
+  const [togglingEmailVerification, setTogglingEmailVerification] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -44,6 +46,9 @@ export default function AdminSettingsPage() {
         // 从设置中读取注册开关状态
         const regSetting = data.settings.find((s: Setting) => s.key === 'registration_enabled');
         setRegistrationEnabled(!regSetting || regSetting.value === 'true');
+        // 从设置中读取邮箱验证开关状态
+        const emailVerSetting = data.settings.find((s: Setting) => s.key === 'email_verification_enabled');
+        setEmailVerificationEnabled(!emailVerSetting || emailVerSetting.value === 'true');
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -80,6 +85,37 @@ export default function AdminSettingsPage() {
       toast.error('操作失败');
     } finally {
       setTogglingRegistration(false);
+    }
+  };
+
+  const handleToggleEmailVerification = async () => {
+    const newValue = emailVerificationEnabled ? 'false' : 'true';
+    const label = emailVerificationEnabled ? '关闭' : '开启';
+
+    const confirmed = await confirm(
+      `确定要${label}邮箱验证码吗？`,
+      { title: `${label}邮箱验证`, confirmText: '确定', confirmColor: emailVerificationEnabled ? 'red' : 'blue' }
+    );
+    if (!confirmed) return;
+
+    setTogglingEmailVerification(true);
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setSetting', key: 'email_verification_enabled', value: newValue }),
+      });
+      if (response.ok) {
+        setEmailVerificationEnabled(!emailVerificationEnabled);
+        fetchData();
+        toast.success(`已${label}邮箱验证码`);
+      } else {
+        toast.error('操作失败');
+      }
+    } catch (error) {
+      toast.error('操作失败');
+    } finally {
+      setTogglingEmailVerification(false);
     }
   };
 
@@ -226,7 +262,7 @@ export default function AdminSettingsPage() {
               {registrationEnabled ? <UserPlus className="h-5 w-5 text-white" /> : <UserX className="h-5 w-5 text-text-tertiary" />}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">用户注册</h2>
+              <h2 className="text-lg font-semibold text-text-primary">新用户注册</h2>
               <p className="text-sm text-text-tertiary">
                 {registrationEnabled ? '当前已开放注册，新用户可自行注册账号' : '当前已关闭注册，仅管理员可创建账号'}
               </p>
@@ -241,6 +277,34 @@ export default function AdminSettingsPage() {
               <Loader2 className="h-4 w-4 animate-spin mx-auto text-text-tertiary" />
             ) : (
               <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${registrationEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Email Verification Toggle */}
+      <div className="bg-card rounded-2xl border border-border p-6 mb-6 animate-slide-in-up">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${emailVerificationEnabled ? 'bg-accent' : 'bg-muted'}`}>
+              {emailVerificationEnabled ? <Mail className="h-5 w-5 text-white" /> : <MailX className="h-5 w-5 text-text-tertiary" />}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">邮箱验证码</h2>
+              <p className="text-sm text-text-tertiary">
+                {emailVerificationEnabled ? '注册时需要邮箱验证码，防止恶意注册' : '注册时无需邮箱验证码'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleToggleEmailVerification}
+            disabled={togglingEmailVerification}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${emailVerificationEnabled ? 'bg-accent' : 'bg-muted border border-border'}`}
+          >
+            {togglingEmailVerification ? (
+              <Loader2 className="h-4 w-4 animate-spin mx-auto text-text-tertiary" />
+            ) : (
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${emailVerificationEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
             )}
           </button>
         </div>

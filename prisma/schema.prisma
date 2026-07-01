@@ -177,6 +177,25 @@ model Setting {
   @@index([key])
 }
 
+// ==================== 邮箱验证码 ====================
+
+enum VerificationPurpose {
+  REGISTER
+}
+
+model VerificationCode {
+  id        String              @id @default(cuid())
+  email     String
+  code      String              // 6位验证码
+  purpose   VerificationPurpose
+  expiresAt DateTime
+  used      Boolean             @default(false)
+  createdAt DateTime            @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt])
+}
+
 // ==================== 通知系统 ====================
 
 enum NotificationProvider {

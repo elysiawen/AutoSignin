@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Gamepad2, Loader2 } from 'lucide-react';
@@ -14,14 +14,67 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [code, setCode] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [needVerification, setNeedVerification] = useState(true);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/settings')
+      .then((res) => res.json())
+      .then((data) => setNeedVerification(data.emailVerification))
+      .catch(() => setNeedVerification(true));
+  }, []);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      timerRef.current = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [countdown]);
 
   const inputStyle = (field: string) => ({
     borderColor: focused === field ? 'var(--accent)' : 'var(--border)',
     boxShadow: focused === field ? '0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent)' : 'none',
   });
+
+  const handleSendCode = async () => {
+    if (!email) {
+      showError('请先输入邮箱');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('邮箱格式不正确');
+      return;
+    }
+
+    setSendingCode(true);
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        success('验证码已发送，请查看邮箱');
+        setCountdown(60);
+      } else {
+        showError(data.error || '发送失败');
+      }
+    } catch {
+      showError('发送失败，请稍后重试');
+    } finally {
+      setSendingCode(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +90,10 @@ export default function RegisterPage() {
       showError('密码长度不能少于6位');
       return;
     }
+    if (needVerification && !code) {
+      showError('请输入验证码');
+      return;
+    }
     if (!agreed) {
       showError('请阅读并同意用户服务协议');
       return;
@@ -46,7 +103,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name: name || email.split('@')[0] }),
+        body: JSON.stringify({ email, password, name: name || email.split('@')[0], code }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -183,6 +240,44 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
+
+              {/* 验证码 */}
+              {needVerification && (
+                <div>
+                  <label className="block text-xs font-medium text-text-tertiary mb-2 tracking-wide uppercase">
+                    验证码 <span className="text-accent">*</span>
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      onFocus={() => setFocused('code')}
+                      onBlur={() => setFocused(null)}
+                      className="flex-1 px-4 py-2.5 bg-background border rounded-lg text-sm text-text-primary placeholder:text-text-quaternary outline-none transition-all duration-200 tracking-[0.3em]"
+                      style={inputStyle('code')}
+                      placeholder="6位验证码"
+                      maxLength={6}
+                      disabled={loading}
+                      autoComplete="one-time-code"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendCode}
+                      disabled={sendingCode || countdown > 0}
+                      className="shrink-0 px-4 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+                    >
+                      {sendingCode ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : countdown > 0 ? (
+                        `${countdown}s`
+                      ) : (
+                        '发送验证码'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Terms Agreement */}
               <label className="flex items-start gap-3 cursor-pointer group">
