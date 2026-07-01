@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Pencil, Trash2, Loader2, KeyRound, Shield, User, Search } from 'lucide-react';
+import { Users, Pencil, Trash2, Loader2, KeyRound, Shield, User, Search, UserPlus } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
@@ -22,9 +22,11 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', role: 'USER' });
+  const [createFormData, setCreateFormData] = useState({ name: '', email: '', password: '', role: 'USER' });
   const [newPassword, setNewPassword] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -146,6 +148,38 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleCreate = () => {
+    setCreateFormData({ name: '', email: '', password: '', role: 'USER' });
+    setShowCreateModal(true);
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createFormData),
+      });
+
+      if (response.ok) {
+        setShowCreateModal(false);
+        fetchUsers();
+        toast.success('用户已创建');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || '操作失败');
+      }
+    } catch (error) {
+      toast.error('操作失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -176,6 +210,13 @@ export default function AdminUsersPage() {
             className="p-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors shrink-0"
           >
             <Search className="h-5 w-5" />
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors shrink-0 text-sm font-medium"
+          >
+            <UserPlus className="h-5 w-5" />
+            <span className="hidden sm:inline">新建用户</span>
           </button>
         </div>
       </div>
@@ -436,6 +477,74 @@ export default function AdminUsersPage() {
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? '重置中...' : '重置密码'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Create User Modal */}
+      <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="新建用户">
+        <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">名称</label>
+            <input
+              type="text"
+              value={createFormData.name}
+              onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              placeholder="用户名称（选填）"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">邮箱 <span className="text-destructive">*</span></label>
+            <input
+              type="email"
+              required
+              value={createFormData.email}
+              onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              placeholder="user@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">密码 <span className="text-destructive">*</span></label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={createFormData.password}
+              onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              placeholder="至少6位"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">角色</label>
+            <select
+              value={createFormData.role}
+              onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+            >
+              <option value="USER">用户</option>
+              <option value="ADMIN">管理员</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              disabled={saving}
+              className="px-5 py-2.5 border border-border rounded-xl text-text-secondary hover:bg-muted font-medium text-sm transition-all"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2.5 bg-accent text-white rounded-xl font-medium text-sm hover:bg-accent-hover transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? '创建中...' : '创建'}
             </button>
           </div>
         </form>

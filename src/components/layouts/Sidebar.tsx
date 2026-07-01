@@ -16,6 +16,7 @@ import {
   Shield,
   ExternalLink,
   Wrench,
+  Bell,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import MobileHeader from './MobileHeader';
@@ -24,7 +25,8 @@ const navigation = [
   { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
   { name: '账号管理', href: '/dashboard/accounts', icon: Users },
   { name: '任务管理', href: '/dashboard/tasks', icon: ListTodo },
-  { name: '工具', href: '/dashboard/tools', icon: Wrench },
+  { name: '工具箱', href: '/dashboard/tools', icon: Wrench },
+  { name: '通知', href: '/dashboard/notifications', icon: Bell },
   { name: '设置', href: '/dashboard/settings', icon: Settings },
   { name: '关于', href: '/dashboard/about', icon: Info },
 ];

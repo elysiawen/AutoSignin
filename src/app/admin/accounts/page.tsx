@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Globe, Trash2, Loader2, Gamepad2, Power, Search } from 'lucide-react';
+import { Globe, Trash2, Loader2, Gamepad2, Power, Search, Pencil } from 'lucide-react';
 import Image from 'next/image';
+import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
 import { platformNames, platformIcons, platformColors } from '@/lib/icons';
@@ -13,6 +14,9 @@ interface AccountItem {
   platform: string;
   isActive: boolean;
   cronExpr: string | null;
+  uid: string | null;
+  mid: string | null;
+  extra: any;
   createdAt: string;
   user: { id: string; name: string; email: string };
   _count: { tasks: number };
@@ -28,6 +32,18 @@ export default function AdminAccountsPage() {
   const { confirm } = useConfirm();
   const [accounts, setAccounts] = useState<AccountItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<AccountItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    cookie: '',
+    stoken: '',
+    uid: '',
+    mid: '',
+    cronExpr: '',
+    isActive: true,
+  });
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -96,6 +112,57 @@ export default function AdminAccountsPage() {
       }
     } catch (error) {
       toast.error('删除失败');
+    }
+  };
+
+  const handleEdit = (account: AccountItem) => {
+    setEditingAccount(account);
+    setEditForm({
+      name: account.name,
+      cookie: '',
+      stoken: '',
+      uid: account.uid || '',
+      mid: account.mid || '',
+      cronExpr: account.cronExpr || '',
+      isActive: account.isActive,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAccount || saving) return;
+    setSaving(true);
+
+    try {
+      const submitData: any = {
+        name: editForm.name,
+        isActive: editForm.isActive,
+        cronExpr: editForm.cronExpr || null,
+      };
+      if (editForm.cookie) submitData.cookie = editForm.cookie;
+      if (editForm.stoken) submitData.stoken = editForm.stoken;
+      if (editForm.uid !== undefined) submitData.uid = editForm.uid;
+      if (editForm.mid !== undefined) submitData.mid = editForm.mid;
+
+      const response = await fetch(`/api/admin/accounts/${editingAccount.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submitData),
+      });
+
+      if (response.ok) {
+        setShowEditModal(false);
+        fetchAccounts();
+        toast.success('账号已更新');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || '操作失败');
+      }
+    } catch (error) {
+      toast.error('操作失败');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -183,6 +250,13 @@ export default function AdminAccountsPage() {
                   </div>
                   <div className="flex items-center gap-2 pt-3 border-t border-border">
                     <button
+                      onClick={() => handleEdit(account)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium text-text-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      编辑
+                    </button>
+                    <button
                       onClick={() => handleToggle(account.id)}
                       className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-colors ${
                         account.isActive
@@ -259,6 +333,13 @@ export default function AdminAccountsPage() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
+                              onClick={() => handleEdit(account)}
+                              className="p-2 text-text-tertiary hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                              title="编辑"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
                               onClick={() => handleToggle(account.id)}
                               className={`p-2 rounded-lg transition-colors ${
                                 account.isActive
@@ -325,6 +406,114 @@ export default function AdminAccountsPage() {
           )}
         </>
       )}
+
+      {/* Edit Account Modal */}
+      <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="编辑账号">
+        <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+          {editingAccount && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 rounded-xl">
+              <span className="text-sm text-text-secondary">平台：</span>
+              <span className="text-sm font-medium text-text-primary">
+                {platformNames[editingAccount.platform] || editingAccount.platform}
+              </span>
+              <span className="text-sm text-text-tertiary ml-2">· {editingAccount.user.name || editingAccount.user.email}</span>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">名称</label>
+            <input
+              type="text"
+              required
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Cookie / Token</label>
+            <textarea
+              value={editForm.cookie}
+              onChange={(e) => setEditForm({ ...editForm, cookie: e.target.value })}
+              rows={3}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary resize-none"
+              placeholder="已设置（出于安全考虑不显示，留空则不修改）"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Stoken</label>
+            <input
+              type="text"
+              value={editForm.stoken}
+              onChange={(e) => setEditForm({ ...editForm, stoken: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              placeholder="留空则不修改"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">UID</label>
+              <input
+                type="text"
+                value={editForm.uid}
+                onChange={(e) => setEditForm({ ...editForm, uid: e.target.value })}
+                className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">MID</label>
+              <input
+                type="text"
+                value={editForm.mid}
+                onChange={(e) => setEditForm({ ...editForm, mid: e.target.value })}
+                className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Cron 表达式</label>
+            <input
+              type="text"
+              value={editForm.cronExpr}
+              onChange={(e) => setEditForm({ ...editForm, cronExpr: e.target.value })}
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
+              placeholder="例如：0 9 * * *（每天9点）"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-text-secondary">启用状态</label>
+            <button
+              type="button"
+              onClick={() => setEditForm({ ...editForm, isActive: !editForm.isActive })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                editForm.isActive ? 'bg-accent' : 'bg-border'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                editForm.isActive ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+            <span className="text-sm text-text-tertiary">{editForm.isActive ? '启用' : '禁用'}</span>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              disabled={saving}
+              className="px-5 py-2.5 border border-border rounded-xl text-text-secondary hover:bg-muted font-medium text-sm transition-all"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2.5 bg-accent text-white rounded-xl font-medium text-sm hover:bg-accent-hover transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

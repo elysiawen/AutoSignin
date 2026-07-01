@@ -2,6 +2,8 @@ import cron, { ScheduledTask } from 'node-cron';
 import prisma from './prisma';
 import { executeTask } from '@/services/task-executor';
 import { createLogger, initLogContextAsync, getFormattedLogs } from './logger';
+import { sendNotification, formatSummaryMessage, type TaskResultSummary } from '@/services/notification';
+import { NotificationSource } from '@/generated/prisma/enums';
 
 const log = createLogger('定时任务');
 
@@ -91,6 +93,8 @@ export async function scheduleAccount(account: any) {
     }
 
     // 按顺序执行该账号下的所有任务
+    const taskResults: TaskResultSummary[] = [];
+
     for (const task of account.tasks) {
       log.info(`执行任务: ${task.type}, taskId: ${task.id}`);
 
@@ -114,6 +118,13 @@ export async function scheduleAccount(account: any) {
             },
           });
 
+          taskResults.push({
+            taskType: task.type,
+            status: result.status,
+            message: result.message,
+            reward: result.reward,
+          });
+
           log.info(`任务完成: ${task.type}, status: ${result.status}`);
         } catch (error: any) {
           log.error(`任务失败: ${task.type}`, { error: error.message });
@@ -127,11 +138,31 @@ export async function scheduleAccount(account: any) {
               details: fullLogs || null,
             },
           });
+
+          taskResults.push({
+            taskType: task.type,
+            status: 'FAILED',
+            message: error.message || '执行任务时发生错误',
+          });
         }
       });
 
       // 任务之间等待随机时间
       await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 1000));
+    }
+
+    // 所有任务执行完毕，发送汇总通知
+    if (taskResults.length > 0) {
+      const { event, message } = formatSummaryMessage(account.name, account.platform, NotificationSource.AUTO, taskResults);
+      sendNotification({
+        userId: account.userId,
+        accountName: account.name,
+        platform: account.platform,
+        taskType: `${taskResults.length} 个任务`,
+        event,
+        message,
+        source: NotificationSource.AUTO,
+      }).catch((e) => log.warn('通知发送异常', { error: e.message }));
     }
 
     log.info(`账号任务执行完成: ${account.name}`);
@@ -228,6 +259,7 @@ export async function executeAccountTasks(accountId: string) {
   }
 
   const results: Array<{ taskId: string; type: string; status: string; message: string }> = [];
+  const taskResults: TaskResultSummary[] = [];
 
   for (const task of account.tasks) {
     await initLogContextAsync(async () => {
@@ -256,10 +288,23 @@ export async function executeAccountTasks(accountId: string) {
           status: result.status,
           message: result.message,
         });
+
+        taskResults.push({
+          taskType: task.type,
+          status: result.status,
+          message: result.message,
+          reward: result.reward,
+        });
       } catch (error: any) {
         results.push({
           taskId: task.id,
           type: task.type,
+          status: 'FAILED',
+          message: error.message,
+        });
+
+        taskResults.push({
+          taskType: task.type,
           status: 'FAILED',
           message: error.message,
         });
@@ -268,6 +313,20 @@ export async function executeAccountTasks(accountId: string) {
 
     // 任务之间等待
     await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 1000));
+  }
+
+  // 所有任务执行完毕，发送汇总通知
+  if (taskResults.length > 0) {
+    const { event, message } = formatSummaryMessage(account.name, account.platform, NotificationSource.MANUAL, taskResults);
+    sendNotification({
+      userId: account.userId,
+      accountName: account.name,
+      platform: account.platform,
+      taskType: `${taskResults.length} 个任务`,
+      event,
+      message,
+      source: NotificationSource.MANUAL,
+    }).catch((e) => log.warn('通知发送异常', { error: e.message }));
   }
 
   log.info(`账号任务执行完成: ${account.name}, 共 ${results.length} 个任务`);

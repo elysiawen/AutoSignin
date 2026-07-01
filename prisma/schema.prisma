@@ -18,10 +18,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts Account[]
-  devices  Device[]
-  tasks    Task[]
-  logs     TaskLog[]
+  accounts             Account[]
+  devices              Device[]
+  tasks                Task[]
+  logs                 TaskLog[]
+  notificationChannels NotificationChannel[]
+  notificationBindings NotificationBinding[]
 }
 
 enum Role {
@@ -173,4 +175,57 @@ model Setting {
   value String
 
   @@index([key])
+}
+
+// ==================== 通知系统 ====================
+
+enum NotificationProvider {
+  TELEGRAM
+  DISCORD
+  ONEBOT
+}
+
+enum NotificationEvent {
+  SUCCESS
+  FAILED
+  CAPTCHA
+}
+
+enum NotificationSource {
+  AUTO
+  MANUAL
+}
+
+model NotificationChannel {
+  id        String                @id @default(cuid())
+  name      String
+  provider  NotificationProvider
+  config    Json                  // Telegram: {botToken} | OneBot: {apiUrl,accessToken?} | Discord: {}
+  createdBy String
+  enabled   Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  creator  User                   @relation(fields: [createdBy], references: [id])
+  bindings NotificationBinding[]
+
+  @@index([provider])
+}
+
+model NotificationBinding {
+  id        String                @id @default(cuid())
+  userId    String
+  channelId String
+  target    Json                  // Telegram: {chatId} | Discord: {webhookUrl} | OneBot: {targetType,targetId}
+  events    NotificationEvent[]
+  sources   NotificationSource[] @default([AUTO, MANUAL])
+  enabled   Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel NotificationChannel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channelId])
+  @@index([userId])
 }

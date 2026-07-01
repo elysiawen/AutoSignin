@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { executeTask } from '@/services/task-executor';
 import { initLogContextAsync, getFormattedLogs } from '@/lib/logger';
+import { sendNotification } from '@/services/notification';
+import { NotificationSource } from '@/generated/prisma/enums';
 
 // 手动执行任务
 export async function POST(
@@ -28,6 +30,9 @@ export async function POST(
       return NextResponse.json({ error: '任务不存在' }, { status: 404 });
     }
 
+    // 是否抑制通知（批量运行时由前端控制）
+    const suppressNotification = request.nextUrl.searchParams.get('suppressNotification') === 'true';
+
     // 在日志上下文中执行任务
     return await initLogContextAsync(async () => {
       const startTime = Date.now();
@@ -48,7 +53,21 @@ export async function POST(
         },
       });
 
-      return NextResponse.json({ message: '任务执行完成', log });
+      // 发送通知（SKIPPED 不推送，批量运行时抑制）
+      if (!suppressNotification && result.status !== 'SKIPPED') {
+        sendNotification({
+          userId: task.userId,
+          accountName: task.account.name,
+          platform: task.account.platform,
+          taskType: task.type,
+          event: result.status as any,
+          message: result.message,
+          reward: result.reward,
+          source: NotificationSource.MANUAL,
+        }).catch(() => {});
+      }
+
+      return NextResponse.json({ message: '任务执行完成', log, status: result.status });
     });
   } catch (error) {
     console.error('Run task error:', error);

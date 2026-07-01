@@ -412,9 +412,8 @@ export default function TasksPage() {
     }
   };
 
-  // 手动执行账号所有任务（依次执行）
+  // 手动执行账号所有任务（逐个执行，延迟防风控，最后汇总通知）
   const handleRunAccount = async (accountId: string) => {
-    // 如果正在运行，不允许重复执行
     if (runningAccount) return;
 
     const account = accounts.find(a => a.id === accountId);
@@ -422,22 +421,28 @@ export default function TasksPage() {
 
     setRunningAccount(accountId);
 
-    // 依次执行每个任务
+    const taskResults: Array<{ taskType: string; status: string; message: string; reward?: string }> = [];
+
+    // 逐个执行，带延迟防风控
     for (const task of account.tasks) {
       setRunningTask(task.id);
       setTaskStatus(prev => ({ ...prev, [task.id]: 'running' }));
 
       try {
-        const response = await fetch(`/api/tasks/${task.id}/run`, { method: 'POST' });
+        // suppressNotification 抑制单任务通知
+        const response = await fetch(`/api/tasks/${task.id}/run?suppressNotification=true`, { method: 'POST' });
         if (response.ok) {
           const data = await response.json();
-          const isSuccess = data.log?.status === 'SUCCESS';
+          const isSuccess = data.status === 'SUCCESS' || data.status === 'SKIPPED';
           setTaskStatus(prev => ({ ...prev, [task.id]: isSuccess ? 'success' : 'failed' }));
+          taskResults.push({ taskType: task.type, status: data.status, message: data.log?.message || '', reward: data.log?.reward });
         } else {
           setTaskStatus(prev => ({ ...prev, [task.id]: 'failed' }));
+          taskResults.push({ taskType: task.type, status: 'FAILED', message: '请求失败' });
         }
       } catch (error) {
         setTaskStatus(prev => ({ ...prev, [task.id]: 'failed' }));
+        taskResults.push({ taskType: task.type, status: 'FAILED', message: '网络错误' });
       }
 
       // 短暂显示结果
@@ -445,9 +450,20 @@ export default function TasksPage() {
       setTaskStatus(prev => ({ ...prev, [task.id]: null }));
       setRunningTask(null);
 
-      // 任务间等待
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 任务间随机延迟 1-4 秒（防风控）
+      if (account.tasks.indexOf(task) < account.tasks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 1000));
+      }
     }
+
+    // 所有任务完成，发送汇总通知
+    try {
+      await fetch('/api/notifications/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, results: taskResults }),
+      });
+    } catch {}
 
     setRunningAccount(null);
     fetchData();

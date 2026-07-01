@@ -17,12 +17,13 @@ export async function GET(
     }
 
     const userId = (session.user as any).id;
+    const isAdmin = (session.user as any).role === 'ADMIN';
     const { id } = await params;
 
     const account = await prisma.account.findFirst({
       where: {
         id,
-        userId,
+        ...(isAdmin ? {} : { userId }),
       },
       include: {
         tasks: true,
@@ -33,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: '账号不存在' }, { status: 404 });
     }
 
-    // 返回解密的 cookie（仅限本人查看）
+    // 返回解密的 cookie（仅限本人或管理员查看）
     return NextResponse.json({
       ...account,
       cookie: decrypt(account.cookie),

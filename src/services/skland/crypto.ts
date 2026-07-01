@@ -1,12 +1,14 @@
 /**
  * 森空岛签名和设备ID生成
  * 严格对齐 skland-kit@0.3.5 源码实现
+ * 使用 mima-kit 纯 JS 密码学库，不依赖 OpenSSL
  */
 
 import crypto from 'crypto';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import axios from 'axios';
+import * as mima from 'mima-kit';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('森空岛签名');
@@ -67,14 +69,14 @@ const BROWSER_ENV = {
   status: '0011',
 };
 
-// ==================== 基础加密工具 ====================
+// ==================== 基础加密工具（mima-kit 实现，与 skland-kit 完全对齐） ====================
 
 function md5(data: string): string {
-  return crypto.createHash('md5').update(data, 'utf8').digest('hex');
+  return mima.md5(mima.UTF8(String(data))).to(mima.HEX);
 }
 
 function hmacSha256(key: string, data: string): string {
-  return crypto.createHmac('sha256', key).update(data, 'utf8').digest('hex');
+  return mima.hmac(mima.sha256)(mima.UTF8(String(key)), mima.UTF8(data)).to(mima.HEX);
 }
 
 // AES CBC 加密
@@ -87,34 +89,31 @@ async function encryptAES(message: string, key: string): Promise<string> {
   return encrypted.toString('hex');
 }
 
-// DES 加密（对齐 mima-kit: TripleDES 64bit ECB, NO_PAD, 但 padData 填充 \0）
+// DES 加密（与 skland-kit 完全一致：mima-kit t_des(64) + ecb + NO_PAD + padData 填充 \0）
 function padData(data: string): string {
   const blockSize = 8;
   const padLength = blockSize - (data.length % blockSize);
   return data + '\0'.repeat(padLength === blockSize ? 0 : padLength);
 }
 
-async function encryptDES(message: string, key: string): Promise<string> {
+const TripleDES = mima.t_des(64);
+
+function encryptDES(message: string, key: string): string {
   const inputStr = padData(String(message));
-  // mima-kit 的 t_des(64) + ecb 用 8 字节 key 做单 DES
-  const cipher = crypto.createCipheriv('des-ecb', Buffer.from(key, 'utf8'), null);
-  cipher.setAutoPadding(false);
-  const encrypted = cipher.update(inputStr, 'utf8');
-  const final = cipher.final();
-  return Buffer.concat([encrypted, final]).toString('base64');
+  return mima.ecb(TripleDES, mima.NO_PAD)(mima.UTF8(key)).encrypt(mima.UTF8(inputStr)).to(mima.B64);
 }
 
 // 按 DES_RULE 加密对象字段
-async function encryptObjectByDESRules(
+function encryptObjectByDESRules(
   object: Record<string, any>,
   rules: typeof DES_RULE,
-): Promise<Record<string, string>> {
+): Record<string, string> {
   const result: Record<string, string> = {};
   for (const i in object) {
     if (i in rules) {
       const rule = rules[i];
       if (rule.is_encrypt === 1 && rule.key) {
-        result[rule.obfuscated_name] = await encryptDES(String(object[i]), rule.key);
+        result[rule.obfuscated_name] = encryptDES(String(object[i]), rule.key);
       } else {
         result[rule.obfuscated_name] = String(object[i]);
       }
@@ -142,7 +141,7 @@ async function gzipObject(o: Record<string, string>): Promise<string> {
   return arr.toString('base64');
 }
 
-// RSA 加密（用 Web Crypto API 对齐参考实现）
+// RSA 加密（与 skland-kit 完全一致：Web Crypto 解析 PEM + mima-kit 加密）
 async function extractJWKFromPEM(publicKeyPEM: string): Promise<{ n: bigint; e: bigint }> {
   const pemContents = publicKeyPEM
     .replace(/-----BEGIN PUBLIC KEY-----/, '')
@@ -176,33 +175,10 @@ function base64URLToBigInt(base64url: string): bigint {
   return result;
 }
 
-// 用 mima-kit 风格的 RSA PKCS1 加密
 async function encryptRSA(message: string, publicKey: string): Promise<string> {
   const { n, e } = await extractJWKFromPEM(publicKey);
-  // 构建 JWK 格式公钥用于 Node.js crypto
-  const nB64url = bigIntToBase64URL(n);
-  const eB64url = bigIntToBase64URL(e);
-  const jwk = { kty: 'RSA', n: nB64url, e: eB64url };
-  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSA-OAEP' }, true, ['encrypt']);
-  // 注意：参考用的是 pkcs1_es_1_5 (PKCS1 v1.5)，不是 OAEP
-  // 但 Web Crypto API 不直接支持 PKCS1v1.5，用 Node.js crypto 代替
-  const nodeKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
-  const encrypted = crypto.publicEncrypt(
-    { key: nodeKey, padding: crypto.constants.RSA_PKCS1_PADDING },
-    Buffer.from(message, 'utf8'),
-  );
-  return encrypted.toString('base64');
-}
-
-function bigIntToBase64URL(n: bigint): string {
-  const hex = n.toString(16);
-  const paddedHex = hex.length % 2 ? '0' + hex : hex;
-  const buf = Buffer.from(paddedHex, 'hex');
-  return buf
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  const key = mima.rsa({ n, e });
+  return mima.pkcs1_es_1_5(key).encrypt(mima.UTF8(message)).to(mima.B64);
 }
 
 // smid 生成
@@ -266,7 +242,7 @@ export async function getDid(): Promise<string> {
   const body = {
     appId: 'default',
     compress: 2,
-    data: await encryptAES(await gzipObject(await encryptObjectByDESRules(desTarget, DES_RULE)), priId),
+    data: await encryptAES(await gzipObject(encryptObjectByDESRules(desTarget, DES_RULE)), priId),
     encode: 5,
     ep,
     organization: SHUMEI_CONFIG.organization,

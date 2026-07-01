@@ -17,6 +17,7 @@ import {
   Database,
   ArrowLeft,
   LayoutDashboard,
+  Bell,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import AdminMobileHeader from './AdminMobileHeader';
@@ -27,6 +28,7 @@ const adminNavigation = [
   { name: '全部账号', href: '/admin/accounts', icon: Globe },
   { name: '全部任务', href: '/admin/tasks', icon: ListTodo },
   { name: '执行日志', href: '/admin/logs', icon: FileText },
+  { name: '通知渠道', href: '/admin/notifications', icon: Bell },
   { name: '系统设置', href: '/admin/settings', icon: Database },
 ];
 

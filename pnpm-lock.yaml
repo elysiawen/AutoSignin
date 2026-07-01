@@ -35,6 +35,9 @@ importers:
       lucide-react:
         specifier: ^1.22.0
         version: 1.22.0(react@19.2.4)
+      mima-kit:
+        specifier: 0.1.2
+        version: 0.1.2
       next:
         specifier: 16.2.9
         version: 16.2.9(@babel/core@7.29.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -2135,6 +2138,9 @@ packages:
   micromatch@4.0.8:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
+
+  mima-kit@0.1.2:
+    resolution: {integrity: sha512-dDrstPXjzAP8ivc8RDL8lR2uIFE4UbbnuuJysP4HRyo67/iPwZKY7UUgwHWH6RK1s6gA0kxB0k1/5vby2HgOjw==}
 
   mime-db@1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
@@ -4827,6 +4833,8 @@ snapshots:
     dependencies:
       braces: 3.0.3
       picomatch: 2.3.2
+
+  mima-kit@0.1.2: {}
 
   mime-db@1.52.0: {}
 
