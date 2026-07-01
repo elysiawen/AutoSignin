@@ -94,20 +94,24 @@ export function formatSummaryMessage(
   text += `-----------------------------------\n`;
   results.forEach((r) => {
     const name = taskTypeNames[r.taskType] || r.taskType;
-    const statusIcon = r.status === 'SUCCESS' ? '✅' : r.status === 'FAILED' ? '❌' : r.status === 'SKIPPED' ? '⏭' : '🧩';
     // 去掉 [手动]/[自动] 前缀
     const rawMessage = (r.message || '').replace(/^\[(手动|自动)\]\s*/, '');
+    let icon: string;
     let detail: string;
     if (r.reward) {
-      detail = `🎁 ${r.reward}`;
+      icon = '🎁';
+      detail = r.reward;
     } else if (r.status === 'FAILED') {
+      icon = '❌';
       detail = rawMessage || '执行失败';
     } else if (r.status === 'SKIPPED') {
+      icon = '⏭';
       detail = rawMessage || '已跳过';
     } else {
+      icon = '✅';
       detail = '成功';
     }
-    text += `${name}：${statusIcon} ${detail}\n`;
+    text += `${name}：${icon} ${detail}\n`;
   });
 
   return { event, message: text.trim() };
