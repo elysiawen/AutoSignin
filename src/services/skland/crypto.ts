@@ -96,11 +96,9 @@ function padData(data: string): string {
   return data + '\0'.repeat(padLength === blockSize ? 0 : padLength);
 }
 
-const TripleDES = mima.t_des(64);
-
 function encryptDES(message: string, key: string): string {
   const inputStr = padData(String(message));
-  return mima.ecb(TripleDES, mima.NO_PAD)(mima.UTF8(key)).encrypt(mima.UTF8(inputStr)).to(mima.B64);
+  return mima.ecb(mima.des, mima.NO_PAD)(mima.UTF8(key)).encrypt(mima.UTF8(inputStr)).to(mima.B64);
 }
 
 // 按 DES_RULE 加密对象字段
