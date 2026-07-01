@@ -22,19 +22,30 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const TAG_LENGTH = 16;
+const SALT_LENGTH = 16;
 
-function getEncryptionKey(): Buffer {
+function getBaseKey(): string {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
     throw new Error('ENCRYPTION_KEY is not set in environment variables');
   }
-  // 确保 key 是 32 字节
-  return crypto.scryptSync(key, 'salt', 32);
+  return key;
 }
 
+/**
+ * 从 base key 和 salt 派生 32 字节密钥
+ */
+function deriveKey(salt: Buffer): Buffer {
+  return crypto.scryptSync(getBaseKey(), salt, 32);
+}
+
+/**
+ * 加密数据
+ * 格式: v1:salt(hex):iv(hex):tag(hex):encrypted(hex)
+ */
 export function encrypt(text: string): string {
-  const key = getEncryptionKey();
+  const salt = crypto.randomBytes(SALT_LENGTH);
+  const key = deriveKey(salt);
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -43,21 +54,25 @@ export function encrypt(text: string): string {
 
   const tag = cipher.getAuthTag();
 
-  // 格式: iv:tag:encrypted
-  return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
+  return `v1:${salt.toString('hex')}:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
 }
 
+/**
+ * 解密数据
+ * 格式: v1:salt(hex):iv(hex):tag(hex):encrypted(hex)
+ */
 export function decrypt(encryptedText: string): string {
-  const key = getEncryptionKey();
   const parts = encryptedText.split(':');
 
-  if (parts.length !== 3) {
+  if (parts.length !== 5 || parts[0] !== 'v1') {
     throw new Error('Invalid encrypted text format');
   }
 
-  const iv = Buffer.from(parts[0], 'hex');
-  const tag = Buffer.from(parts[1], 'hex');
-  const encrypted = parts[2];
+  const salt = Buffer.from(parts[1], 'hex');
+  const key = deriveKey(salt);
+  const iv = Buffer.from(parts[2], 'hex');
+  const tag = Buffer.from(parts[3], 'hex');
+  const encrypted = parts[4];
 
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);

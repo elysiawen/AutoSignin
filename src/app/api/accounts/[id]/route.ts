@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { encrypt, decrypt } from '@/lib/utils';
-import { rescheduleAccount } from '@/lib/scheduler';
+import { rescheduleAccount, unscheduleAccount } from '@/lib/scheduler';
 import { createKuroClient, GameType } from '@/services/kuro';
 
 // 获取单个账号详情
@@ -196,6 +196,7 @@ export async function DELETE(
     }
 
     // 删除账号（级联删除关联的任务和日志）
+    unscheduleAccount(id);
     await prisma.account.delete({
       where: { id },
     });

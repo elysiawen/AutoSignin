@@ -57,6 +57,7 @@ enum Platform {
   HOYOLAB   // HoYoLAB（国际服）
   KUJIEQU   // 库街区
   TAYGEDO   // 塔吉多
+  SKLAND    // 森空岛
   YIHUAN    // 异环（后续扩展）
 }
 
@@ -131,6 +132,10 @@ enum TaskType {
   TAYGEDO_GAMESIGNIN // 游戏签到
   TAYGEDO_COINS      // 金币任务（BBS签到+浏览+点赞+分享）
   TAYGEDO_CLOUD      // 云异环时长签到
+
+  // 森空岛任务
+  SKLAND_ARKNIGHTS   // 明日方舟签到
+  SKLAND_ENDFIELD    // 终末地签到
 }
 
 // ==================== 执行日志 ====================

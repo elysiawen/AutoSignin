@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Loader2, Copy, Trash2, Smartphone } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/Confirm';
 
 interface DeviceEntry {
   id: string;
@@ -23,6 +24,7 @@ const platformLabels: Record<string, string> = {
   HOYOLAB: 'HoYoLAB',
   KUJIEQU: '库街区',
   TAYGEDO: '塔吉多',
+  SKLAND: '森空岛',
   YIHUAN: '异环',
 };
 
@@ -53,10 +55,14 @@ const platformFields: Record<string, { key: string; label: string }[]> = {
     { key: 'openudid', label: 'OpenUDID' },
     { key: 'vendorid', label: 'Vendor ID' },
   ],
+  SKLAND: [
+    { key: 'deviceId', label: '设备 ID' },
+  ],
 };
 
 export default function DeviceModal({ open, onClose }: DeviceModalProps) {
   const toast = useToast();
+  const { confirm } = useConfirm();
   const [loading, setLoading] = useState(false);
   const [devices, setDevices] = useState<DeviceEntry[]>([]);
 
@@ -92,7 +98,8 @@ export default function DeviceModal({ open, onClose }: DeviceModalProps) {
   };
 
   const handleDelete = async (id: string, platform: string) => {
-    if (!confirm(`确定要删除「${platformLabels[platform] || platform}」的设备信息吗？下次使用相关工具时会自动生成新的。`)) return;
+    const confirmed = await confirm(`确定要删除「${platformLabels[platform] || platform}」的设备信息吗？下次使用相关工具时会自动生成新的。`, { confirmColor: 'red', confirmText: '删除' });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/tools/device?id=${id}`, { method: 'DELETE' });
@@ -109,7 +116,8 @@ export default function DeviceModal({ open, onClose }: DeviceModalProps) {
   };
 
   const handleDeleteAll = async () => {
-    if (!confirm('确定要删除所有设备信息吗？下次使用相关工具时会自动重新生成。')) return;
+    const confirmed = await confirm('确定要删除所有设备信息吗？下次使用相关工具时会自动重新生成。', { confirmColor: 'red', confirmText: '全部删除' });
+    if (!confirmed) return;
 
     try {
       const res = await fetch('/api/tools/device', { method: 'DELETE' });

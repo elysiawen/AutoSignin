@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 interface HelpGuideProps {
-  platform: 'MIYOUSHE' | 'HOYOLAB' | 'KUJIEQU' | 'TAYGEDO';
+  platform: 'MIYOUSHE' | 'HOYOLAB' | 'KUJIEQU' | 'TAYGEDO' | 'SKLAND';
   field: 'cookie' | 'stoken' | 'cloudToken' | 'token';
   onOpenKuroLogin?: () => void;
   onOpenMysLogin?: () => void;
@@ -94,6 +94,21 @@ export default function HelpGuide({ platform, field, onOpenKuroLogin, onOpenMysL
         ],
         links: [
           { text: '塔吉多官网', url: 'https://www.tajiduo.com/' },
+        ],
+      };
+    } else if (platform === 'SKLAND') {
+      return {
+        title: '获取鹰角 OAuth Token',
+        steps: [
+          '打开浏览器，进入无痕/隐身模式',
+          '访问 https://web-api.skland.com/account/info/hg',
+          '如果未登录，先登录鹰角账号',
+          '在返回的 JSON 中找到 "content" 字段',
+          '复制 content 字段的值（一长串字符）',
+          '粘贴到上方「鹰角 OAuth Token」字段',
+        ],
+        links: [
+          { text: '森空岛官网', url: 'https://www.skland.com/' },
         ],
       };
     } else {

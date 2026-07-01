@@ -8,7 +8,6 @@ export async function register() {
     return;
   }
 
-  // 同步导入，确保在服务器启动时执行
   try {
     const { initScheduler } = await import('./lib/scheduler');
     console.log('[启动] 初始化定时任务调度器...');

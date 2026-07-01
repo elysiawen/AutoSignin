@@ -125,7 +125,7 @@ export default function AccountsPage() {
       }
 
       // 处理 uid 字段
-      if (formData.platform !== 'TAYGEDO' && formData.uid) {
+      if (formData.platform !== 'TAYGEDO' && formData.platform !== 'SKLAND' && formData.uid) {
         submitData.uid = formData.uid;
       }
 
@@ -449,6 +449,7 @@ export default function AccountsPage() {
                 <option value="HOYOLAB">HoYoLAB（国际服）</option>
                 <option value="KUJIEQU">库街区</option>
                 <option value="TAYGEDO">塔吉多</option>
+                <option value="SKLAND">森空岛</option>
                 <option value="YIHUAN">异环（敬请期待）</option>
               </select>
             </div>
@@ -476,7 +477,7 @@ export default function AccountsPage() {
                 setFormData({ ...formData, name: e.target.value })
               }
               className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-              placeholder={formData.platform === 'KUJIEQU' ? '例如：我的鸣潮号' : formData.platform === 'TAYGEDO' ? '例如：我的塔吉多号' : '例如：我的原神号'}
+              placeholder={formData.platform === 'KUJIEQU' ? '例如：我的鸣潮号' : formData.platform === 'TAYGEDO' ? '例如：我的塔吉多号' : formData.platform === 'SKLAND' ? '例如：我的森空岛号' : '例如：我的原神号'}
             />
           </div>
 
@@ -484,20 +485,20 @@ export default function AccountsPage() {
           {formData.platform !== 'KUJIEQU' && formData.platform !== 'TAYGEDO' && (
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
-                Cookie
+                {formData.platform === 'SKLAND' ? '鹰角 OAuth Token' : 'Cookie'}
               </label>
               <textarea
                 value={formData.cookie}
                 onChange={(e) =>
                   setFormData({ ...formData, cookie: e.target.value })
                 }
-                rows={3}
+                rows={formData.platform === 'SKLAND' ? 2 : 3}
                 className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary resize-none"
-                placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : '粘贴从浏览器获取的 Cookie'}
+                placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : formData.platform === 'SKLAND' ? '粘贴鹰角 OAuth Token（从 web-api.skland.com/account/info/hg 获取 content 字段）' : '粘贴从浏览器获取的 Cookie'}
               />
               <HelpGuide
                 platform={formData.platform as 'MIYOUSHE' | 'HOYOLAB'}
-                field="cookie"
+                field={formData.platform === 'SKLAND' ? 'token' : 'cookie'}
                 onOpenMysLogin={() => setShowMysLoginModal(true)}
                 onOpenMysQrLogin={() => setShowMysQrLoginModal(true)}
               />

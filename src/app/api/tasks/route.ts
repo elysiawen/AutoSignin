@@ -158,6 +158,8 @@ function getTaskPlatform(taskType: string): string | null {
     TAYGEDO_GAMESIGNIN: 'TAYGEDO',
     TAYGEDO_COINS: 'TAYGEDO',
     TAYGEDO_CLOUD: 'TAYGEDO',
+    SKLAND_ARKNIGHTS: 'SKLAND',
+    SKLAND_ENDFIELD: 'SKLAND',
   };
   return platformMap[taskType] || null;
 }

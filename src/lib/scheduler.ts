@@ -5,6 +5,19 @@ import { createLogger, initLogContextAsync, getFormattedLogs } from './logger';
 
 const log = createLogger('定时任务');
 
+// ==================== 全局异常处理 ====================
+
+process.on('uncaughtException', (error) => {
+  console.error('[全局] 未捕获的异常:', error.message);
+  console.error('[全局] 堆栈:', error.stack);
+});
+
+process.on('unhandledRejection', (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  console.error('[全局] 未处理的 Promise 拒绝:', err.message);
+  console.error('[全局] 堆栈:', err.stack);
+});
+
 // 存储所有活跃的 cron 任务（按账号ID）
 const scheduledTasks = new Map<string, ScheduledTask>();
 

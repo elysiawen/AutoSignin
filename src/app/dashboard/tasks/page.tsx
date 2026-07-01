@@ -73,6 +73,10 @@ const taskGroupsByPlatform: Record<string, Array<{ type: string; name: string }>
     { type: 'TAYGEDO_COINS', name: '金币任务（签到+浏览+点赞+分享）' },
     { type: 'TAYGEDO_CLOUD', name: '云异环时长签到' },
   ],
+  SKLAND: [
+    { type: 'SKLAND_ARKNIGHTS', name: '明日方舟签到（自动签全部角色）' },
+    { type: 'SKLAND_ENDFIELD', name: '终末地签到（自动签全部角色）' },
+  ],
 };
 
 // Cron 表达式转易读文字

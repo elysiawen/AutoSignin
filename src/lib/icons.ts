@@ -8,6 +8,7 @@ export const platformIcons: Record<string, string | null> = {
   HOYOLAB: '/icons/hoyolab.png',
   KUJIEQU: '/icons/kurobbs.webp',
   TAYGEDO: '/icons/taygedo.webp',
+  SKLAND: '/icons/skland.webp',
   YIHUAN: null,
 };
 
@@ -48,6 +49,10 @@ export const taskTypeIcons: Record<string, string> = {
   TAYGEDO_GAMESIGNIN: '/icons/taygedo.webp',
   TAYGEDO_COINS: '/icons/taygedo.webp',
   TAYGEDO_CLOUD: '/icons/taygedo.webp',
+
+  // 森空岛任务
+  SKLAND_ARKNIGHTS: '/icons/arknights.webp',
+  SKLAND_ENDFIELD: '/icons/endfield.webp',
 };
 
 // 平台颜色
@@ -56,6 +61,7 @@ export const platformColors: Record<string, string> = {
   HOYOLAB: 'bg-purple-500',
   KUJIEQU: 'bg-green-500',
   TAYGEDO: 'bg-cyan-500',
+  SKLAND: 'bg-orange-500',
   YIHUAN: 'bg-orange-500',
 };
 
@@ -96,6 +102,10 @@ export const taskTypeColors: Record<string, string> = {
   TAYGEDO_GAMESIGNIN: 'bg-teal-500',
   TAYGEDO_COINS: 'bg-amber-500',
   TAYGEDO_CLOUD: 'bg-sky-500',
+
+  // 森空岛任务
+  SKLAND_ARKNIGHTS: 'bg-blue-600',
+  SKLAND_ENDFIELD: 'bg-purple-600',
 };
 
 // 平台名称
@@ -104,6 +114,7 @@ export const platformNames: Record<string, string> = {
   HOYOLAB: 'HoYoLAB（国际服）',
   KUJIEQU: '库街区',
   TAYGEDO: '塔吉多',
+  SKLAND: '森空岛',
   YIHUAN: '异环',
 };
 
@@ -144,4 +155,8 @@ export const taskTypeNames: Record<string, string> = {
   TAYGEDO_GAMESIGNIN: '塔吉多游戏签到',
   TAYGEDO_COINS: '塔吉多金币任务',
   TAYGEDO_CLOUD: '云异环时长签到',
+
+  // 森空岛任务
+  SKLAND_ARKNIGHTS: '明日方舟签到',
+  SKLAND_ENDFIELD: '终末地签到',
 };

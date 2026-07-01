@@ -15,6 +15,10 @@ import {
   executeTaygedoCoins,
   executeTaygedoCloud,
 } from './taygedo';
+import {
+  executeSklandArknightsAttendance,
+  executeSklandEndfieldAttendance,
+} from './skland';
 
 const log = createLogger('任务执行器');
 
@@ -384,6 +388,29 @@ export async function executeTask(
           status: taygedoCloudResult.success ? 'SUCCESS' : 'FAILED',
           message: taygedoCloudResult.message,
           reward: taygedoCloudResult.reward,
+        };
+        break;
+      }
+
+      // 森空岛任务
+      case 'SKLAND_ARKNIGHTS': {
+        log.info('执行森空岛明日方舟签到');
+        const sklandArknightsResult = await executeSklandArknightsAttendance(account);
+        result = {
+          status: sklandArknightsResult.success ? 'SUCCESS' : 'FAILED',
+          message: sklandArknightsResult.message,
+          reward: sklandArknightsResult.reward,
+        };
+        break;
+      }
+
+      case 'SKLAND_ENDFIELD': {
+        log.info('执行森空岛终末地签到');
+        const sklandEndfieldResult = await executeSklandEndfieldAttendance(account);
+        result = {
+          status: sklandEndfieldResult.success ? 'SUCCESS' : 'FAILED',
+          message: sklandEndfieldResult.message,
+          reward: sklandEndfieldResult.reward,
         };
         break;
       }

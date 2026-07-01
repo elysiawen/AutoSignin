@@ -72,21 +72,21 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center overflow-hidden">
-              <span className="text-white text-lg font-bold">舟</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-text-primary">方舟：终末地</p>
-              <p className="text-xs text-text-tertiary">游戏签到</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
             <div className="w-10 h-10 rounded-lg bg-cyan-500 flex items-center justify-center overflow-hidden">
               <img src="/icons/taygedo.webp" alt="塔吉多" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-sm font-medium text-text-primary">塔吉多</p>
               <p className="text-xs text-text-tertiary">社区签到、游戏签到、金币任务、云异环时长</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+            <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center overflow-hidden">
+              <img src="/icons/skland.webp" alt="森空岛" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-primary">森空岛</p>
+              <p className="text-xs text-text-tertiary">明日方舟、终末地 · 游戏签到</p>
             </div>
           </div>
         </div>
@@ -122,11 +122,12 @@ export default function AboutPage() {
         <h3 className="text-lg font-semibold text-text-primary mb-4">相关链接</h3>
         <div className="space-y-3">
           {[
-            { icon: '⭐', name: 'MihoyoBBSTools', desc: '米游社自动签到（上游项目）', url: 'https://github.com/Womsxd/MihoyoBBSTools' },
-            { icon: '🔑', name: 'mihoyo_login', desc: '米游社 Stoken 获取工具', url: 'https://github.com/Womsxd/mihoyo_login' },
-            { icon: '🎮', name: 'Kuro-autosignin', desc: '库街区自动签到（上游项目）', url: 'https://github.com/mxyooR/Kuro-autosignin' },
-            { icon: '🔑', name: 'Kuro_login', desc: '库街区 Token 获取工具', url: 'https://github.com/mxyooR/Kuro_login' },
-            { icon: '🎯', name: 'taygedo-auto-attendance', desc: '塔吉多自动签到（上游项目）', url: 'https://github.com/mxyooR/taygedo-auto-attendance' },
+            { icon: '⭐', name: 'MihoyoBBSTools', desc: '米游社自动签到（上游项目）', url: 'https://github.com/Womsxd/MihoyoBBSTools', commit: 'f062d1f' },
+            { icon: '🗺️', name: 'TeyvatGuide', desc: '米游社登录、设备信息（上游项目）', url: 'https://github.com/BTMuli/TeyvatGuide', commit: '8964681' },
+            { icon: '🎮', name: 'Kuro-autosignin', desc: '库街区自动签到（上游项目）', url: 'https://github.com/mxyooR/Kuro-autosignin', commit: 'a334796' },
+            { icon: '🔑', name: 'Kuro_login', desc: '库街区 Token 获取工具', url: 'https://github.com/mxyooR/Kuro_login', commit: 'b69ef1a' },
+            { icon: '🎯', name: 'taygedo-auto-attendance', desc: '塔吉多自动签到（上游项目）', url: 'https://github.com/mxyooR/taygedo-auto-attendance', commit: 'c9b38d4' },
+            { icon: '🏝️', name: 'skland-daily-attendance', desc: '森空岛自动签到（上游项目）', url: 'https://github.com/AEtherside/skland-daily-attendance', commit: 'ac37412' },
           ].map((link) => (
             <a
               key={link.name}
@@ -140,7 +141,12 @@ export default function AboutPage() {
                 <p className="text-sm font-medium text-text-primary">{link.name}</p>
                 <p className="text-xs text-text-tertiary">{link.desc}</p>
               </div>
-              <ExternalLink className="h-4 w-4 text-text-quaternary" />
+              <div className="flex items-center gap-2">
+                {link.commit && (
+                  <code className="px-2 py-0.5 text-xs font-mono bg-muted rounded text-text-quaternary">{link.commit}</code>
+                )}
+                <ExternalLink className="h-4 w-4 text-text-quaternary" />
+              </div>
             </a>
           ))}
         </div>

@@ -138,9 +138,12 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+    if (platform === 'SKLAND' && !cookie) {
+      return NextResponse.json({ error: '鹰角 OAuth Token 不能为空' }, { status: 400 });
+    }
 
     // 验证平台类型
-    const validPlatforms = ['MIYOUSHE', 'HOYOLAB', 'KUJIEQU', 'TAYGEDO', 'YIHUAN'];
+    const validPlatforms = ['MIYOUSHE', 'HOYOLAB', 'KUJIEQU', 'TAYGEDO', 'SKLAND', 'YIHUAN'];
     if (!validPlatforms.includes(platform)) {
       return NextResponse.json({ error: '无效的平台类型' }, { status: 400 });
     }

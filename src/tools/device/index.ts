@@ -40,6 +40,12 @@ export interface TaygedoDeviceConfig {
   vendorid: string;
 }
 
+// ==================== 森空岛设备类型 ====================
+
+export interface SklandDeviceConfig {
+  deviceId: string; // 数美设备ID，格式 "B" + deviceId
+}
+
 // ==================== 工具函数 ====================
 
 function getRandomString(length: number): string {
@@ -173,6 +179,16 @@ export function generateTaygedoDevice(): TaygedoDeviceConfig {
   };
 }
 
+// ==================== 森空岛设备 ====================
+
+export function generateSklandDevice(): SklandDeviceConfig {
+  // 占位符，实际 deviceId 通过数美反欺诈服务获取
+  // 签到时会自动调用 getDid() 获取真实设备ID
+  return {
+    deviceId: '',
+  };
+}
+
 // ==================== 通用接口 ====================
 
 type DeviceConfigMap = {
@@ -180,6 +196,7 @@ type DeviceConfigMap = {
   HOYOLAB: MiyousheDeviceConfig;
   KUJIEQU: KuroDeviceConfig;
   TAYGEDO: TaygedoDeviceConfig;
+  SKLAND: SklandDeviceConfig;
   YIHUAN: Record<string, any>;
 };
 
@@ -235,4 +252,11 @@ export async function ensureKuroDevice(userId: string): Promise<KuroDeviceConfig
  */
 export async function ensureTaygedoDevice(userId: string): Promise<TaygedoDeviceConfig> {
   return ensureDevice(userId, 'TAYGEDO', () => generateTaygedoDevice());
+}
+
+/**
+ * 确保森空岛设备信息存在
+ */
+export async function ensureSklandDevice(userId: string): Promise<SklandDeviceConfig> {
+  return ensureDevice(userId, 'SKLAND', () => generateSklandDevice());
 }
