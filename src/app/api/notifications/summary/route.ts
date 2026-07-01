@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       event,
       message,
       source: NotificationSource.MANUAL,
+      rawMessage: true,
     });
 
     return NextResponse.json({ success: true });

@@ -186,7 +186,7 @@ export async function executeKuroGameCheckin(
       log.error(`${gameName} 签到失败: 用户信息异常`);
       return {
         success: false,
-        message: `${gameName} 签到失败: 用户信息异常`,
+        message: '用户信息异常',
       };
     }
 
@@ -194,7 +194,7 @@ export async function executeKuroGameCheckin(
       log.error(`${gameName} 签到失败: 登录已过期`);
       return {
         success: false,
-        message: `${gameName} 签到失败: 登录已过期，请重新获取 token`,
+        message: '登录已过期，请重新获取 token',
       };
     }
 
@@ -202,13 +202,13 @@ export async function executeKuroGameCheckin(
     log.error(`${gameName} 签到失败`, { code: response.code, message: response.message });
     return {
       success: false,
-      message: `${gameName} 签到失败: ${response.message}`,
+      message: response.message || '签到失败',
     };
   } catch (error: any) {
     log.error(`${gameName} 签到异常`, error.message);
     return {
       success: false,
-      message: `${gameName} 签到失败: ${error.message}`,
+      message: error.message || '签到异常',
     };
   }
 }

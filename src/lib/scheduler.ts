@@ -162,6 +162,7 @@ export async function scheduleAccount(account: any) {
         event,
         message,
         source: NotificationSource.AUTO,
+        rawMessage: true,
       }).catch((e) => log.warn('通知发送异常', { error: e.message }));
     }
 
@@ -326,6 +327,7 @@ export async function executeAccountTasks(accountId: string) {
       event,
       message,
       source: NotificationSource.MANUAL,
+      rawMessage: true,
     }).catch((e) => log.warn('通知发送异常', { error: e.message }));
   }
 

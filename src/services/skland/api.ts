@@ -330,9 +330,11 @@ export async function doEndfieldAttendance(
   const headers = {
     ...(await buildSignedHeaders(token, url, undefined, dId, cred)),
     'sk-game-role': skGameRole,
+    'referer': 'https://game.skland.com/',
+    'origin': 'https://game.skland.com/',
   };
 
-  const response = await axios.post(url, {}, { headers, timeout: 10000 });
+  const response = await axios.post(url, undefined, { headers, timeout: 10000 });
   const data: SklandResponse = response.data;
 
   if (data.code !== 0) {

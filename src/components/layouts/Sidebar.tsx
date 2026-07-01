@@ -22,13 +22,28 @@ import { useState, useMemo } from 'react';
 import MobileHeader from './MobileHeader';
 
 const navigation = [
-  { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
-  { name: '账号管理', href: '/dashboard/accounts', icon: Users },
-  { name: '任务管理', href: '/dashboard/tasks', icon: ListTodo },
-  { name: '工具箱', href: '/dashboard/tools', icon: Wrench },
-  { name: '通知', href: '/dashboard/notifications', icon: Bell },
-  { name: '设置', href: '/dashboard/settings', icon: Settings },
-  { name: '关于', href: '/dashboard/about', icon: Info },
+  {
+    label: '主菜单',
+    items: [
+      { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
+      { name: '账号管理', href: '/dashboard/accounts', icon: Users },
+      { name: '任务管理', href: '/dashboard/tasks', icon: ListTodo },
+    ],
+  },
+  {
+    label: '小工具',
+    items: [
+      { name: '工具箱', href: '/dashboard/tools', icon: Wrench },
+      { name: '通知管理', href: '/dashboard/notifications', icon: Bell },
+      { name: '设置', href: '/dashboard/settings', icon: Settings },
+    ],
+  },
+  {
+    label: '关于',
+    items: [
+      { name: '关于', href: '/dashboard/about', icon: Info },
+    ],
+  },
 ];
 
 export default function Sidebar() {
@@ -66,30 +81,38 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        <p className="px-4 mb-2 text-[11px] font-medium text-text-quaternary uppercase tracking-wider">
-          主菜单
-        </p>
-        {navigation.map((item) => {
-          const isActive = item.href === '/dashboard'
-            ? pathname === '/dashboard'
-            : pathname === item.href || pathname.startsWith(item.href + '/');
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-text-secondary hover:bg-sidebar-accent hover:text-sidebar-foreground'
-              }`}
-            >
-              <item.icon className={`h-5 w-5 ${isActive ? 'text-sidebar-accent-foreground' : ''}`} />
-              {item.name}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {navigation.map((group) => (
+          <div key={group.label || group.items[0].name}>
+            {group.label && (
+              <p className="px-4 mb-2 text-[11px] font-medium text-text-quaternary uppercase tracking-wider">
+                {group.label}
+              </p>
+            )}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = item.href === '/dashboard'
+                  ? pathname === '/dashboard'
+                  : pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : 'text-text-secondary hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    }`}
+                  >
+                    <item.icon className={`h-5 w-5 ${isActive ? 'text-sidebar-accent-foreground' : ''}`} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom section */}

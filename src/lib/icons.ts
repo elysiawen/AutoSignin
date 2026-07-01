@@ -157,6 +157,6 @@ export const taskTypeNames: Record<string, string> = {
   TAYGEDO_CLOUD: '云异环时长签到',
 
   // 森空岛任务
-  SKLAND_ARKNIGHTS: '明日方舟签到',
-  SKLAND_ENDFIELD: '终末地签到',
+  SKLAND_ARKNIGHTS: '明日方舟',
+  SKLAND_ENDFIELD: '终末地',
 };
