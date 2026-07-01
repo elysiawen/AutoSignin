@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
 
@@ -34,6 +35,10 @@ export default function RegisterPage() {
     }
     if (password.length < 6) {
       showError('密码长度不能少于6位');
+      return;
+    }
+    if (!agreed) {
+      showError('请阅读并同意用户服务协议');
       return;
     }
     setLoading(true);
@@ -178,6 +183,35 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
+
+              {/* Terms Agreement */}
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="relative mt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-4 h-4 border border-border rounded transition-all peer-checked:bg-accent peer-checked:border-accent flex items-center justify-center">
+                    {agreed && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs text-text-tertiary leading-relaxed">
+                  我已阅读并同意{' '}
+                  <Link
+                    href="/auth/terms"
+                    target="_blank"
+                    className="text-accent hover:text-accent-hover transition-colors underline"
+                  >
+                    《用户服务协议》
+                  </Link>
+                </span>
+              </label>
 
               <button
                 type="submit"
