@@ -8,6 +8,8 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
 import HelpGuide from '@/components/HelpGuide';
 import KuroLoginModal from '@/components/tools/KuroLoginModal';
+import MysLoginModal from '@/components/tools/MysLoginModal';
+import MysQrLoginModal from '@/components/tools/MysQrLoginModal';
 import { platformNames, platformIcons, platformColors } from '@/lib/icons';
 
 interface Account {
@@ -64,6 +66,8 @@ export default function AccountsPage() {
   });
   const [showOptional, setShowOptional] = useState(false);
   const [showKuroModal, setShowKuroModal] = useState(false);
+  const [showMysLoginModal, setShowMysLoginModal] = useState(false);
+  const [showMysQrLoginModal, setShowMysQrLoginModal] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -491,7 +495,12 @@ export default function AccountsPage() {
                 className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary resize-none"
                 placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : '粘贴从浏览器获取的 Cookie'}
               />
-              <HelpGuide platform={formData.platform as 'MIYOUSHE' | 'HOYOLAB'} field="cookie" />
+              <HelpGuide
+                platform={formData.platform as 'MIYOUSHE' | 'HOYOLAB'}
+                field="cookie"
+                onOpenMysLogin={() => setShowMysLoginModal(true)}
+                onOpenMysQrLogin={() => setShowMysQrLoginModal(true)}
+              />
             </div>
           )}
 
@@ -884,6 +893,39 @@ export default function AccountsPage() {
             wwroleId: data.roleId || '',
           }));
           setShowOptional(true);
+        }}
+      />
+
+      {/* 米游社手机号登录弹窗 */}
+      <MysLoginModal
+        open={showMysLoginModal}
+        onClose={() => setShowMysLoginModal(false)}
+        onFill={(data) => {
+          const cookie = `cookie_token=${data.cookieToken}; account_id=${data.accountId}; ltuid=${data.accountId}`;
+          setFormData((prev) => ({
+            ...prev,
+            cookie,
+            stoken: data.stoken,
+            uid: data.accountId,
+            mid: data.mid,
+          }));
+        }}
+      />
+
+      {/* 米游社扫码登录弹窗 */}
+      <MysQrLoginModal
+        open={showMysQrLoginModal}
+        onClose={() => setShowMysQrLoginModal(false)}
+        onFill={(data) => {
+          const parts = [`account_id=${data.accountId}`, `ltuid=${data.accountId}`];
+          if (data.cookieToken) parts.push(`cookie_token=${data.cookieToken}`);
+          setFormData((prev) => ({
+            ...prev,
+            cookie: parts.join('; '),
+            stoken: data.stoken,
+            uid: data.accountId,
+            mid: data.mid,
+          }));
         }}
       />
     </div>

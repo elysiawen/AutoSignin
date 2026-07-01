@@ -54,9 +54,24 @@ export async function executeTask(
     const isOs = type.endsWith('_OS');
     log.info(`平台类型: ${isOs ? '国际服' : '国服'}`);
 
+    // 从 Device 表读取持久化的设备信息（按用户+平台）
+    let deviceOpt: { deviceId?: string; deviceFp?: string } = {};
+    if (!isOs) {
+      const device = await prisma.device.findUnique({
+        where: { userId_platform: { userId: account.userId, platform: account.platform } },
+        select: { config: true },
+      });
+      const config = device?.config as Record<string, any> | undefined;
+      if (config?.device_id) {
+        deviceOpt = { deviceId: config.device_id, deviceFp: config.device_fp };
+      } else {
+        deviceOpt = { deviceId: uid };
+      }
+    }
+
     const client = isOs
       ? createHoyolabClient(cookie)
-      : createMihoyoClient(cookie, uid);
+      : createMihoyoClient(cookie, deviceOpt);
 
     // 根据任务类型执行
     let result: TaskResult;
@@ -149,8 +164,14 @@ export async function executeTask(
         const kuroExtra = account.extra as any || {};
         let wuwaRoleId = kuroExtra?.wwroleId;
         let kuroUserId = kuroExtra?.kuroUserId;
-        const devcode = kuroExtra?.devcode;
-        const distinctId = kuroExtra?.distinct_id;
+        // 优先从 Device 表读取设备信息，兼容 Account.extra
+        const kuroDeviceWuwa = await prisma.device.findUnique({
+          where: { userId_platform: { userId: account.userId, platform: 'KUJIEQU' } },
+          select: { config: true },
+        });
+        const kuroCfgWuwa = kuroDeviceWuwa?.config as Record<string, any> | undefined;
+        const devcode = kuroCfgWuwa?.devcode || kuroExtra?.devcode;
+        const distinctId = kuroCfgWuwa?.distinct_id || kuroExtra?.distinct_id;
         let needUpdate = false;
 
         // 自动获取用户ID
@@ -221,8 +242,13 @@ export async function executeTask(
         const kuroExtraPgr = account.extra as any || {};
         let pgrRoleId = kuroExtraPgr?.pgrRoleId;
         let kuroUserIdPgr = kuroExtraPgr?.kuroUserId;
-        const devcodePgr = kuroExtraPgr?.devcode;
-        const distinctIdPgr = kuroExtraPgr?.distinct_id;
+        const kuroDevicePgr = await prisma.device.findUnique({
+          where: { userId_platform: { userId: account.userId, platform: 'KUJIEQU' } },
+          select: { config: true },
+        });
+        const kuroCfgPgr = kuroDevicePgr?.config as Record<string, any> | undefined;
+        const devcodePgr = kuroCfgPgr?.devcode || kuroExtraPgr?.devcode;
+        const distinctIdPgr = kuroCfgPgr?.distinct_id || kuroExtraPgr?.distinct_id;
         let needUpdatePgr = false;
 
         // 自动获取用户ID
@@ -291,8 +317,13 @@ export async function executeTask(
         log.info('执行库街区论坛任务');
         const kuroTokenForum = decrypt(account.cookie);
         const kuroExtraForum = account.extra as any;
-        const devcodeForum = kuroExtraForum?.devcode;
-        const distinctIdForum = kuroExtraForum?.distinct_id;
+        const kuroDeviceForum = await prisma.device.findUnique({
+          where: { userId_platform: { userId: account.userId, platform: 'KUJIEQU' } },
+          select: { config: true },
+        });
+        const kuroCfgForum = kuroDeviceForum?.config as Record<string, any> | undefined;
+        const devcodeForum = kuroCfgForum?.devcode || kuroExtraForum?.devcode;
+        const distinctIdForum = kuroCfgForum?.distinct_id || kuroExtraForum?.distinct_id;
 
         const forumResult = await executeKuroForumTasks(kuroTokenForum, {
           devcode: devcodeForum,

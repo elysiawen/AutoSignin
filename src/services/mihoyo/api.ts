@@ -94,7 +94,10 @@ export const GAME_ID_TO_CONFIG: Record<string, string> = {
 /**
  * 创建米游社 API 客户端
  */
-export function createMihoyoClient(cookie: string, deviceId?: string): AxiosInstance {
+export function createMihoyoClient(
+  cookie: string,
+  device?: { deviceId?: string; deviceFp?: string },
+): AxiosInstance {
   const client = axios.create({
     timeout: 30000,
     headers: {
@@ -110,8 +113,11 @@ export function createMihoyoClient(cookie: string, deviceId?: string): AxiosInst
     },
   });
 
-  if (deviceId) {
-    client.defaults.headers['x-rpc-device_id'] = deviceId;
+  if (device?.deviceId) {
+    client.defaults.headers['x-rpc-device_id'] = device.deviceId;
+  }
+  if (device?.deviceFp) {
+    client.defaults.headers['x-rpc-device_fp'] = device.deviceFp;
   }
 
   return client;

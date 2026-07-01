@@ -8,7 +8,7 @@ import { decrypt, encrypt } from '@/lib/utils';
 import { createLogger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
 import { sleep, randomInt } from '@/services/mihoyo/crypto';
-import { ensureDevice } from './device';
+import { ensureTaygedoDevice, type TaygedoDeviceConfig } from '@/tools/device';
 import {
   createTaygedoClient,
   loginWithPassword,
@@ -46,9 +46,9 @@ export interface TaygedoResult {
 async function ensureSession(
   account: Account,
   extra: Record<string, any>,
+  deviceId: string,
 ): Promise<{ accessToken: string; uid: string; updatedExtra: Record<string, any> }> {
   const client = createTaygedoClient();
-  const deviceId = extra.deviceId;
 
   // 1. 尝试使用现有 accessToken
   if (extra.accessToken) {
@@ -163,14 +163,9 @@ export async function executeTaygedoSignin(account: Account): Promise<TaygedoRes
   log.info('执行塔吉多 APP 社区签到');
 
   const extra = (account.extra as any) || {};
-  const device = ensureDevice(extra);
+  const device = await ensureTaygedoDevice(account.userId);
 
-  // 更新设备信息
-  if (device.deviceId !== extra.deviceId) {
-    await saveAccountExtra(account.id, { ...extra, ...device });
-  }
-
-  const { accessToken, uid, updatedExtra } = await ensureSession(account, { ...extra, ...device });
+  const { accessToken, uid, updatedExtra } = await ensureSession(account, extra, device.deviceId);
   const client = createTaygedoClient();
 
   try {
@@ -195,12 +190,9 @@ export async function executeTaygedoGameSignin(account: Account): Promise<Tayged
   log.info('执行塔吉多游戏签到');
 
   const extra = (account.extra as any) || {};
-  const device = ensureDevice(extra);
-  if (device.deviceId !== extra.deviceId) {
-    await saveAccountExtra(account.id, { ...extra, ...device });
-  }
+  const device = await ensureTaygedoDevice(account.userId);
 
-  const { accessToken, uid, updatedExtra } = await ensureSession(account, { ...extra, ...device });
+  const { accessToken, uid, updatedExtra } = await ensureSession(account, extra, device.deviceId);
   const client = createTaygedoClient();
   const results: string[] = [];
 
@@ -264,12 +256,9 @@ export async function executeTaygedoCoins(account: Account): Promise<TaygedoResu
   log.info('执行塔吉多金币任务');
 
   const extra = (account.extra as any) || {};
-  const device = ensureDevice(extra);
-  if (device.deviceId !== extra.deviceId) {
-    await saveAccountExtra(account.id, { ...extra, ...device });
-  }
+  const device = await ensureTaygedoDevice(account.userId);
 
-  const { accessToken, uid } = await ensureSession(account, { ...extra, ...device });
+  const { accessToken, uid } = await ensureSession(account, extra, device.deviceId);
   const client = createTaygedoClient();
   const messages: string[] = [];
   const errors: string[] = [];
@@ -381,7 +370,7 @@ export async function executeTaygedoCloud(account: Account): Promise<TaygedoResu
   log.info('执行塔吉多云异环时长签到');
 
   const extra = (account.extra as any) || {};
-  const device = ensureDevice(extra);
+  const device = await ensureTaygedoDevice(account.userId);
 
   let laohuToken = extra.laohuToken;
   let laohuUserId = extra.laohuUserId;
@@ -396,7 +385,6 @@ export async function executeTaygedoCloud(account: Account): Promise<TaygedoResu
         laohuUserId = login.userId;
         await saveAccountExtra(account.id, {
           ...extra,
-          ...device,
           laohuToken,
           laohuUserId,
         });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { kuroSdkLogin } from '@/tools/kuro-login';
+import { ensureKuroDevice } from '@/tools/device';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '手机号和验证码不能为空' }, { status: 400 });
     }
 
-    const result = await kuroSdkLogin(mobile, code);
+    // 加载或生成该用户的库街区设备信息
+    const device = await ensureKuroDevice(session.user.id!);
+
+    const result = await kuroSdkLogin(mobile, code, device);
 
     return NextResponse.json({
       message: '登录成功',

@@ -10,6 +10,7 @@
 
 import crypto from 'crypto';
 import axios from 'axios';
+import { type KuroDeviceConfig, generateKuroDevice } from '@/tools/device';
 
 export interface KuroLoginResult {
   token: string;
@@ -24,11 +25,13 @@ export interface KuroLoginResult {
  * 库街区 SDK 登录
  * @param mobile 手机号
  * @param code 短信验证码
+ * @param device 可选的设备信息（持久化时传入）
  * @returns 登录结果，包含 token、userId、设备信息、角色信息
  */
-export async function kuroSdkLogin(mobile: string, code: string): Promise<KuroLoginResult> {
-  const devcode = crypto.randomBytes(20).toString('hex');
-  const distinctId = crypto.randomUUID().replace(/-/g, '');
+export async function kuroSdkLogin(mobile: string, code: string, device?: KuroDeviceConfig): Promise<KuroLoginResult> {
+  const d = device || generateKuroDevice();
+  const devcode = d.devcode;
+  const distinctId = d.distinct_id;
 
   // 1. SDK 登录，获取 token
   const loginResponse = await axios.post(

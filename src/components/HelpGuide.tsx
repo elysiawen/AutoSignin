@@ -7,9 +7,11 @@ interface HelpGuideProps {
   platform: 'MIYOUSHE' | 'HOYOLAB' | 'KUJIEQU' | 'TAYGEDO';
   field: 'cookie' | 'stoken' | 'cloudToken' | 'token';
   onOpenKuroLogin?: () => void;
+  onOpenMysLogin?: () => void;
+  onOpenMysQrLogin?: () => void;
 }
 
-export default function HelpGuide({ platform, field, onOpenKuroLogin }: HelpGuideProps) {
+export default function HelpGuide({ platform, field, onOpenKuroLogin, onOpenMysLogin, onOpenMysQrLogin }: HelpGuideProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getContent = (): { title: string; steps: string[]; methods?: string[]; links?: { text: string; url: string }[] } => {
@@ -18,6 +20,10 @@ export default function HelpGuide({ platform, field, onOpenKuroLogin }: HelpGuid
         case 'cookie':
           return {
             title: '获取米游社 Cookie',
+            methods: [
+              '▸ 方法一：使用内置登录工具（推荐）',
+              '▸ 方法二：从浏览器手动获取',
+            ],
             steps: [
               '打开浏览器，进入无痕/隐身模式',
               '打开 miyoushe.com 并登录',
@@ -137,7 +143,7 @@ export default function HelpGuide({ platform, field, onOpenKuroLogin }: HelpGuid
               <li key={i}>{step}</li>
             ))}
           </ol>
-          {/* 库街区内置登录工具按钮 */}
+          {/* 内置登录工具按钮 */}
           {platform === 'KUJIEQU' && field === 'token' && onOpenKuroLogin && (
             <div className="mt-2">
               <button
@@ -147,6 +153,28 @@ export default function HelpGuide({ platform, field, onOpenKuroLogin }: HelpGuid
               >
                 打开登录工具
               </button>
+            </div>
+          )}
+          {platform === 'MIYOUSHE' && field === 'cookie' && (onOpenMysLogin || onOpenMysQrLogin) && (
+            <div className="mt-2 flex gap-2">
+              {onOpenMysQrLogin && (
+                <button
+                  type="button"
+                  onClick={onOpenMysQrLogin}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-medium hover:bg-accent-hover transition-colors"
+                >
+                  扫码登录
+                </button>
+              )}
+              {onOpenMysLogin && (
+                <button
+                  type="button"
+                  onClick={onOpenMysLogin}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-muted text-text-secondary rounded-lg text-xs font-medium hover:bg-muted/80 transition-colors"
+                >
+                  手机号登录
+                </button>
+              )}
             </div>
           )}
           {content.links && content.links.length > 0 && (

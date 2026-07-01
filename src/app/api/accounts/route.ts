@@ -182,8 +182,8 @@ export async function POST(request: NextRequest) {
     if (platform === 'TAYGEDO' && extra?.taygedoLoginMode === 'password' && extra?.phone && extra?.password) {
       try {
         const { createTaygedoClient, loginWithPassword, userCenterLogin } = await import('@/services/taygedo/api');
-        const { ensureDevice } = await import('@/services/taygedo/device');
-        const device = ensureDevice(finalExtra);
+        const { ensureTaygedoDevice } = await import('@/tools/device');
+        const device = await ensureTaygedoDevice(session.user.id!);
 
         const client = createTaygedoClient();
         const login = await loginWithPassword(client, extra.phone, extra.password, device.deviceId);
@@ -194,7 +194,6 @@ export async function POST(request: NextRequest) {
         const { password: _, ...extraWithoutPassword } = finalExtra;
         finalExtra = {
           ...extraWithoutPassword,
-          ...device,
           laohuToken: login.token,
           laohuUserId: login.userId,
           taygedoLoginMode: 'password',
