@@ -5,6 +5,7 @@ import { ListTodo, Play, Trash2, Loader2, CheckCircle2, XCircle, Clock, FileText
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import LogsModal from '@/components/ui/LogsModal';
+import Pagination from '@/components/ui/Pagination';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
 import { taskTypeNames, taskTypeIcons } from '@/lib/icons';
@@ -339,39 +340,16 @@ export default function AdminTasksPage() {
 
           {/* Pagination */}
           {total > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-text-tertiary">每页</span>
-                <select
-                  value={limit}
-                  onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                  className="px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-text-primary"
-                >
-                  <option value={10}>10</option>
-                  <option value={30}>30</option>
-                  <option value={50}>50</option>
-                </select>
-                <span className="text-sm text-text-tertiary">条，共 {total} 条</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="px-3 py-1.5 border border-border rounded-lg text-sm text-text-secondary hover:bg-muted disabled:opacity-50"
-                >
-                  上一页
-                </button>
-                <span className="text-sm text-text-tertiary">
-                  第 {page} / {Math.ceil(total / limit)} 页
-                </span>
-                <button
-                  onClick={() => setPage(p => Math.min(Math.ceil(total / limit), p + 1))}
-                  disabled={page >= Math.ceil(total / limit)}
-                  className="px-3 py-1.5 border border-border rounded-lg text-sm text-text-secondary hover:bg-muted disabled:opacity-50"
-                >
-                  下一页
-                </button>
-              </div>
+            <div className="mt-6">
+              <Pagination
+                page={page}
+                totalPages={Math.ceil(total / limit)}
+                onChange={setPage}
+                showTotal={total}
+                showLimit
+                limit={limit}
+                onLimitChange={(l) => { setLimit(l); setPage(1); }}
+              />
             </div>
           )}
         </>

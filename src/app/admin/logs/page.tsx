@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { FileText, Loader2, CheckCircle2, XCircle, Clock, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import Pagination from '@/components/ui/Pagination';
 
 interface LogItem {
   id: string;
@@ -213,41 +214,16 @@ export default function AdminLogsPage() {
 
           {/* Pagination */}
           {total > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-text-tertiary">每页</span>
-                <select
-                  value={limit}
-                  onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                  className="px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-text-primary"
-                >
-                  <option value={10}>10</option>
-                  <option value={30}>30</option>
-                  <option value={50}>50</option>
-                </select>
-                <span className="text-sm text-text-tertiary">条，共 {total} 条</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => fetchLogs(page - 1)}
-                  disabled={page <= 1}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-border rounded-lg text-sm text-text-secondary hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  上一页
-                </button>
-                <span className="text-sm text-text-tertiary">
-                  第 {page} / {totalPages} 页
-                </span>
-                <button
-                  onClick={() => fetchLogs(page + 1)}
-                  disabled={page >= totalPages}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 border border-border rounded-lg text-sm text-text-secondary hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  下一页
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+            <div className="mt-6">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onChange={fetchLogs}
+                showTotal={total}
+                showLimit
+                limit={limit}
+                onLimitChange={(l) => { setLimit(l); setPage(1); fetchLogs(1); }}
+              />
             </div>
           )}
         </>

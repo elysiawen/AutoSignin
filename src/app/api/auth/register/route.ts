@@ -5,6 +5,12 @@ import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // 检查是否开放注册
+    const setting = await prisma.setting.findUnique({ where: { key: 'registration_enabled' } });
+    if (setting && setting.value !== 'true') {
+      return NextResponse.json({ error: '注册功能已关闭，请联系管理员创建账号' }, { status: 403 });
+    }
+
     // 频率限制：每个 IP 每 15 分钟最多 5 次注册
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
     const { limited } = checkRateLimit(`register:${ip}`, { windowMs: 15 * 60 * 1000, max: 5 });
