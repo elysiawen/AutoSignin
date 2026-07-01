@@ -50,7 +50,7 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-              支持米游社、HoYoLAB、库街区、塔吉多等平台的自动签到，游戏签到、社区任务、云游戏时长，定时执行，解放双手。
+              支持米游社、HoYoLAB、库街区、塔吉多、森空岛等平台的自动签到，游戏签到、社区任务、云游戏时长，定时执行，解放双手。
             </p>
             <div className="flex items-center justify-center gap-4">
               <Link
@@ -72,16 +72,17 @@ export default function HomePage() {
 
         {/* Platforms */}
         <section className="max-w-6xl mx-auto px-6 pb-20">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
               { name: '米游社', desc: '原神 · 崩坏3 · 星穹铁道', color: 'bg-blue-500', icon: '/icons/miyoushe.webp' },
               { name: 'HoYoLAB', desc: '国际服游戏签到', color: 'bg-purple-500', icon: '/icons/hoyolab.png' },
               { name: '库街区', desc: '鸣潮 · 战双帕弥什', color: 'bg-green-500', icon: '/icons/kurobbs.webp' },
               { name: '塔吉多', desc: '社区签到 · 云异环', color: 'bg-cyan-500', icon: '/icons/taygedo.webp' },
+              { name: '森空岛', desc: '明日方舟 · 终末地', color: 'bg-orange-500', icon: '/icons/skland.webp', span2: true },
             ].map((p) => (
               <div
                 key={p.name}
-                className="bg-card/80 backdrop-blur border border-border rounded-2xl p-5 text-center hover:border-accent/30 hover:shadow-lg transition-all"
+                className={`bg-card/80 backdrop-blur border border-border rounded-2xl p-5 text-center hover:border-accent/30 hover:shadow-lg transition-all ${p.span2 ? 'col-span-2 sm:col-span-1' : ''}`}
               >
                 <div className={`w-12 h-12 rounded-xl ${p.color} flex items-center justify-center mx-auto mb-3 overflow-hidden shadow-lg`}>
                   <img src={p.icon} alt={p.name} className="w-full h-full object-cover" />

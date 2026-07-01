@@ -147,7 +147,7 @@ export default function RegisterPage() {
             创建账号，开始管理您的多平台自动签到任务。
           </p>
           <div className="hidden lg:flex flex-col gap-3">
-            {['支持米游社、HoYoLAB、库街区、塔吉多', '游戏签到 + 社区任务 + 云游戏', 'Cron 定时自动执行'].map((text, i) => (
+            {['支持米游社、HoYoLAB、库街区、塔吉多、森空岛', '游戏签到 + 社区任务 + 云游戏', 'Cron 定时自动执行'].map((text, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-violet-400/60" />
                 <span className="text-sm text-text-tertiary">{text}</span>

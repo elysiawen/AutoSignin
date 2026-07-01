@@ -50,7 +50,7 @@ console.log(result);
 
 ### 方式二：Web 界面
 
-访问 `/dashboard/tools/mys-login` 使用可视化工具（支持极验验证）。
+在 `/dashboard/tools` 页面中点击「米游社手机号登录」打开可视化工具（支持极验验证）。
 
 ## API
 

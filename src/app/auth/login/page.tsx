@@ -69,7 +69,7 @@ export default function LoginPage() {
             </div>
           </div>
           <p className="text-base text-text-secondary leading-relaxed max-w-sm mx-auto lg:mx-0 mb-8">
-            支持米游社、HoYoLAB、库街区、塔吉多等多平台自动签到，一站式管理您的签到任务。
+            支持米游社、HoYoLAB、库街区、塔吉多、森空岛等多平台自动签到，一站式管理您的签到任务。
           </p>
           <div className="hidden lg:flex flex-col gap-3">
             {['多平台游戏签到', '社区任务自动化', '定时任务调度'].map((text, i) => (
