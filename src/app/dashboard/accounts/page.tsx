@@ -454,7 +454,6 @@ export default function AccountsPage() {
                 <option value="KUJIEQU">库街区</option>
                 <option value="TAYGEDO">塔吉多</option>
                 <option value="SKLAND">森空岛</option>
-                <option value="YIHUAN">异环（敬请期待）</option>
               </select>
             </div>
           )}

@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useConfirm } from '@/components/ui/Confirm';
+import { useToast } from '@/components/ui/Toast';
 import {
   LayoutDashboard,
   Users,
@@ -48,8 +49,10 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const { confirm } = useConfirm();
+  const toast = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isAdmin = (session?.user as any)?.role === 'ADMIN';
@@ -61,7 +64,9 @@ export default function Sidebar() {
       confirmColor: 'red',
     });
     if (confirmed) {
-      signOut({ callbackUrl: '/auth/login' });
+      await signOut({ redirect: false });
+      toast.success('已退出登录');
+      router.push('/auth/login');
     }
   };
 

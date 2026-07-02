@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { Gamepad2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
-  const { error: showError } = useToast();
+  const router = useRouter();
+  const { success, error: showError } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,8 @@ export default function LoginPage() {
       if (result?.error) {
         showError('邮箱或密码错误');
       } else {
-        window.location.href = '/dashboard';
+        success('登录成功');
+        router.push('/dashboard');
       }
     } catch {
       showError('登录失败，请稍后重试');

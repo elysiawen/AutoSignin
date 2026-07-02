@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useConfirm } from '@/components/ui/Confirm';
+import { useToast } from '@/components/ui/Toast';
 import {
   Shield,
   Users,
@@ -34,7 +35,9 @@ const adminNavigation = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { confirm } = useConfirm();
+  const toast = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -44,7 +47,9 @@ export default function AdminSidebar() {
       confirmColor: 'red',
     });
     if (confirmed) {
-      signOut({ callbackUrl: '/auth/login' });
+      await signOut({ redirect: false });
+      toast.success('已退出登录');
+      router.push('/auth/login');
     }
   };
 

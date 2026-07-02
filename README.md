@@ -41,53 +41,85 @@
 ### 1. 环境要求
 
 - Node.js 20+
+- npm 10+
 - PostgreSQL 14+
 
 ### 2. 安装依赖
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 3. 配置环境变量
 
-复制 `.env.example` 为 `.env`，并填写配置：
+先复制环境变量模板：
 
 ```bash
 cp .env.example .env
 ```
 
+Windows PowerShell 也可以使用：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+至少需要配置以下字段：
+
 ```env
 # 数据库连接
-DATABASE_URL="postgresql://用户名:密码@localhost:5432/数据库名?schema=public"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/autosign?schema=public"
 
-# NextAuth 配置
+# 本地开发地址
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="随机生成的密钥"  # openssl rand -base64 32
 
-# 数据加密密钥（32位字符）
-ENCRYPTION_KEY="随机生成的密钥"   # openssl rand -hex 16
+# NextAuth 密钥，建议使用 openssl rand -base64 32 生成
+NEXTAUTH_SECRET="your-secret-key-change-this-in-production"
+
+# 数据加密密钥，建议使用 openssl rand -hex 16 生成
+ENCRYPTION_KEY="your-32-char-encryption-key-here"
+
+# 反向代理 / 部署环境建议保留
+AUTH_TRUST_HOST=true
 ```
+
+可选邮件配置：
+
+```env
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="465"
+SMTP_USER="your-email@example.com"
+SMTP_PASS="your-smtp-password"
+SMTP_FROM="AutoSignin <noreply@example.com>"
+```
+
+> 忘记密码和邮箱验证码依赖 SMTP；如果暂时不用这两个功能，可以先不填邮件配置。
 
 ### 4. 初始化数据库
 
-```bash
-npx prisma db push    # 推送 schema 到数据库
-npx prisma generate   # 生成 Prisma Client
-npx prisma db seed    # 创建默认管理员（admin@autosign.com / admin123）
-```
-
-### 5. 启动
+首次启动前执行：
 
 ```bash
-pnpm dev     # 开发模式
-pnpm build   # 生产构建
-pnpm start   # 生产启动
+npx prisma generate
+npx prisma db push
+npm run db:seed
 ```
 
-访问 http://localhost:3000，使用默认管理员账号登录。
+说明：
 
-> ⚠️ 首次登录后请立即修改密码！
+- `npx prisma generate`：生成 Prisma Client
+- `npx prisma db push`：将当前 schema 同步到数据库
+- `npm run db:seed`：创建默认管理员账号 `admin@autosign.com / admin123`
+
+### 5. 启动开发环境
+
+```bash
+npm run dev
+```
+
+启动后访问 [http://localhost:3000](http://localhost:3000)，使用默认管理员账号登录。
+
+> ⚠️ 首次登录后请立即修改默认管理员密码。
 
 ## 项目结构
 
@@ -220,26 +252,31 @@ autosign-platform/
 
 ## 部署
 
-### Docker 部署
+当前仓库未包含现成的 `Dockerfile` 或 `docker-compose.yml`，推荐先使用手动部署。
+
+### 生产部署步骤
+
+1. 安装依赖并配置生产环境变量
+2. 执行数据库初始化或 schema 同步
+3. 构建应用
+4. 启动服务
 
 ```bash
-docker build -t autosign-platform .
-docker run -d \
-  -p 3000:3000 \
-  -e DATABASE_URL="postgresql://..." \
-  -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
-  -e ENCRYPTION_KEY="$(openssl rand -hex 16)" \
-  autosign-platform
+npm install
+npx prisma generate
+npx prisma db push
+npm run build
+npm run start
 ```
 
-### 手动部署
+### 生产环境建议
 
-```bash
-pnpm build
-pnpm start
-```
+- 将 `NEXTAUTH_URL` 改为线上访问地址，例如 `https://your-domain.com`
+- 重新生成强随机的 `NEXTAUTH_SECRET` 和 `ENCRYPTION_KEY`
+- 保持 `AUTH_TRUST_HOST=true`，尤其是在反向代理场景下
+- 首次部署完成后，立即修改默认管理员密码
 
-> ⚠️ 部署前务必执行 `npx prisma db push` 同步数据库 schema。
+> ⚠️ 每次更新 Prisma 数据模型后，都应在部署前执行一次 `npx prisma db push`。
 
 ## 相关项目
 
