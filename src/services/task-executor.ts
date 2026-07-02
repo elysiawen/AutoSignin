@@ -495,7 +495,7 @@ async function executeMihoyobbsTask(
     deviceModel: 'Xiaomi MI 6',
   };
 
-  log.info('执行米游社任务', { taskType, options });
+  log.info('执行米游社任务', { taskType, deviceId, doSign: options.doSign, doRead: options.doRead, doLike: options.doLike, doShare: options.doShare });
 
   const result = await executeBbsTasks(stokenCookie, forumIds, options);
 

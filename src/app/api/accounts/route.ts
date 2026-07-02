@@ -49,11 +49,11 @@ export async function GET() {
         // 获取该账号下所有任务的ID
         const taskIds = account.tasks.map(t => t.id);
 
+        const { cookie, stoken, ...safeAccount } = account as any;
+
         if (taskIds.length === 0) {
           return {
-            ...account,
-            cookie: '***已隐藏***',
-            stoken: account.stoken ? '***已隐藏***' : null,
+            ...safeAccount,
             extra: account.extra || null,
             lastAutoRun: null,
             stats: { success: 0, failed: 0 },
@@ -83,9 +83,7 @@ export async function GET() {
         const lastAutoRun = recentLogs.length > 0 ? recentLogs[0].createdAt : null;
 
         return {
-          ...account,
-          cookie: '***已隐藏***',
-          stoken: account.stoken ? '***已隐藏***' : null,
+          ...safeAccount,
           extra: account.extra || null,
           lastAutoRun,
           stats,

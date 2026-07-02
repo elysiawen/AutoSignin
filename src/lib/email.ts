@@ -34,7 +34,8 @@ function getTransporter() {
 
 export async function sendVerificationEmail(
   email: string,
-  code: string
+  code: string,
+  purpose: 'register' | 'forgot-password' = 'register'
 ): Promise<void> {
   const t = getTransporter();
   if (!t) {
@@ -43,6 +44,7 @@ export async function sendVerificationEmail(
   }
 
   const from = process.env.SMTP_FROM || process.env.SMTP_USER!;
+  const isForgotPassword = purpose === 'forgot-password';
 
   await t.sendMail({
     from,
@@ -52,7 +54,7 @@ export async function sendVerificationEmail(
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
         <h2 style="color: #1a1a1a; margin-bottom: 16px;">邮箱验证码</h2>
         <p style="color: #555; line-height: 1.6;">
-          您正在进行账号注册，验证码为：
+          ${isForgotPassword ? '您正在申请重置密码' : '您正在进行账号注册'}，验证码为：
         </p>
         <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; text-align: center; margin: 24px 0;">
           <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;">
@@ -66,5 +68,6 @@ export async function sendVerificationEmail(
     `,
   });
 
-  log.info(`Verification email sent to ${email}`);
+  log.info(`Verification email sent to ${email} (${purpose})`);
 }
+

@@ -181,6 +181,7 @@ model Setting {
 
 enum VerificationPurpose {
   REGISTER
+  FORGOT_PASSWORD
 }
 
 model VerificationCode {

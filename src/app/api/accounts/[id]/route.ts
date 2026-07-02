@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { encrypt, decrypt } from '@/lib/utils';
+import { encrypt } from '@/lib/utils';
 import { rescheduleAccount, unscheduleAccount } from '@/lib/scheduler';
 import { createKuroClient, GameType } from '@/services/kuro';
 
@@ -34,12 +34,8 @@ export async function GET(
       return NextResponse.json({ error: '账号不存在' }, { status: 404 });
     }
 
-    // 返回解密的 cookie（仅限本人或管理员查看）
-    return NextResponse.json({
-      ...account,
-      cookie: decrypt(account.cookie),
-      stoken: account.stoken ? decrypt(account.stoken) : null,
-    });
+    const { cookie, stoken, ...safeAccount } = account;
+    return NextResponse.json(safeAccount);
   } catch (error) {
     console.error('Get account error:', error);
     return NextResponse.json({ error: '获取账号详情失败' }, { status: 500 });
@@ -197,7 +193,7 @@ export async function DELETE(
     }
 
     // 删除账号（级联删除关联的任务和日志）
-    unscheduleAccount(id);
+    await unscheduleAccount(id);
     await prisma.account.delete({
       where: { id },
     });

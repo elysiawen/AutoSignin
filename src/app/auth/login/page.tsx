@@ -113,7 +113,12 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text-tertiary mb-2 tracking-wide uppercase">密码</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium text-text-tertiary tracking-wide uppercase">密码</label>
+                  <Link href="/auth/forgot-password" className="text-xs text-text-tertiary hover:text-accent transition-colors">
+                    忘记密码?
+                  </Link>
+                </div>
                 <input
                   type="password"
                   value={password}

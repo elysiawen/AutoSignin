@@ -61,6 +61,7 @@ export default function AccountsPage() {
     taygedoDeviceId: '',
     taygedoPhone: '',
     taygedoPassword: '',
+    taygedoHasPassword: false,
     taygedoLaohuToken: '',
     taygedoLaohuUserId: '',
   });
@@ -197,6 +198,7 @@ export default function AccountsPage() {
           taygedoDeviceId: '',
           taygedoPhone: '',
           taygedoPassword: '',
+          taygedoHasPassword: false,
           taygedoLaohuToken: '',
           taygedoLaohuUserId: '',
         });
@@ -264,6 +266,7 @@ export default function AccountsPage() {
       taygedoDeviceId: extra.deviceId || '',
       taygedoPhone: extra.phone || '',
       taygedoPassword: '',
+      taygedoHasPassword: !!(extra as any)?.password || (!!extra.phone && extra.taygedoLoginMode === 'password'),
       taygedoLaohuToken: extra.laohuToken || '',
       taygedoLaohuUserId: extra.laohuUserId || '',
     });
@@ -312,6 +315,7 @@ export default function AccountsPage() {
               taygedoDeviceId: '',
               taygedoPhone: '',
               taygedoPassword: '',
+              taygedoHasPassword: false,
               taygedoLaohuToken: '',
               taygedoLaohuUserId: '',
             });
@@ -618,15 +622,17 @@ export default function AccountsPage() {
                     </label>
                     <input
                       type="password"
-                      required={!editingAccount}
+                      required={!editingAccount && !formData.taygedoHasPassword}
                       value={formData.taygedoPassword}
                       onChange={(e) =>
                         setFormData({ ...formData, taygedoPassword: e.target.value })
                       }
                       className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                      placeholder="塔吉多密码"
+                      placeholder={formData.taygedoHasPassword ? '已设置（留空不修改）' : '塔吉多密码'}
                     />
-                    <p className="text-xs text-text-quaternary mt-1">密码仅在登录时使用一次，不会存储到数据库</p>
+                    {formData.taygedoHasPassword && (
+                      <p className="text-xs text-accent mt-1">密码已设置，如需修改请重新输入，留空则不修改</p>
+                    )}
                   </div>
                 </>
               )}
