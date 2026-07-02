@@ -699,7 +699,7 @@ export default function AccountsPage() {
                           className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
                           placeholder="用于云原神签到（combo_token）"
                         />
-                        <HelpGuide platform="MIYOUSHE" field="cloudToken" />
+                        <HelpGuide platform="MIYOUSHE" field="cloudGenshinToken" />
                       </div>
 
                       <div>
@@ -713,9 +713,9 @@ export default function AccountsPage() {
                             setFormData({ ...formData, cloudZzzToken: e.target.value })
                           }
                           className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder="用于云绝区零签到（combo_token）"
+                          placeholder="用于云绝区零签到（combo_token，需手机抓包）"
                         />
-                        <HelpGuide platform="MIYOUSHE" field="cloudToken" />
+                        <HelpGuide platform="MIYOUSHE" field="cloudZzzToken" />
                       </div>
                     </>
                   )}

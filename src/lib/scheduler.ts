@@ -21,7 +21,11 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // 存储所有活跃的 cron 任务（按账号ID）
-const scheduledTasks = new Map<string, ScheduledTask>();
+// 放在 globalThis 上，避免 Next.js 分包导致多实例问题
+const GLOBAL_KEY = Symbol.for('autosign.scheduledTasks');
+const scheduledTasks: Map<string, ScheduledTask> =
+  ((globalThis as any)[GLOBAL_KEY] as Map<string, ScheduledTask>) ??
+  ((globalThis as any)[GLOBAL_KEY] = new Map<string, ScheduledTask>());
 
 // 默认 cron 表达式：每天凌晨 0:05
 const DEFAULT_CRON = '5 0 * * *';
@@ -207,32 +211,36 @@ export async function rescheduleAccount(accountId: string) {
 
 /**
  * 获取调度器状态
- * 如果内存中没有活跃任务，从数据库查询（兼容热重载/首次请求）
+ * Map 通过 globalThis 共享，不受 Next.js 分包影响。
+ * 如果内存为空（如首次请求），从数据库查询。
  */
 export async function getSchedulerStatus() {
-  const activeAccounts = Array.from(scheduledTasks.keys());
+  const memoryIds = Array.from(scheduledTasks.keys());
 
-  if (activeAccounts.length > 0) {
+  if (memoryIds.length > 0) {
     return {
-      activeCount: activeAccounts.length,
-      accountIds: activeAccounts,
+      activeCount: memoryIds.length,
+      accountIds: memoryIds,
       source: 'scheduler' as const,
     };
   }
 
-  // 内存为空，从数据库查询实际配置了定时任务的账号
+  // 内存为空（服务器刚启动还没到第一个请求），从数据库查询
   try {
     const accounts = await prisma.account.findMany({
       where: {
         isActive: true,
         cronExpr: { not: null },
       },
-      select: { id: true },
+      include: {
+        tasks: true,
+      },
     });
 
+    const activeAccounts = accounts.filter((a) => a.tasks.length > 0);
     return {
-      activeCount: accounts.length,
-      accountIds: accounts.map((a) => a.id),
+      activeCount: activeAccounts.length,
+      accountIds: activeAccounts.map((a) => a.id),
       source: 'database' as const,
     };
   } catch {

@@ -203,6 +203,21 @@ autosign-platform/
 
 使用工具箱中的「森空岛登录」工具，扫码登录自动获取。
 
+### 云原神 Token
+
+1. 浏览器无痕模式打开 https://ys.mihoyo.com/cloud/#/ 并登录
+2. F12 → Network → 筛选 `wallet/wallet/get`
+3. 点击请求，在 Request Headers 中找到 `X-Rpc-Combo_token` 并复制
+
+### 云绝区零 Token
+
+云绝区零无网页版，需通过手机抓包获取：
+1. 手机上安装抓包工具（如 Stream、HttpCanary 等）
+2. 打开抓包工具开始抓包，然后打开云绝区零 App
+3. 在抓包记录中筛选 `wallet/wallet/get`
+4. 找到 `X-Rpc-Combo_token` 请求头并复制
+5. 将复制的 token 粘贴到平台账号管理的「云绝区零 Token」字段
+
 ## 部署
 
 ### Docker 部署

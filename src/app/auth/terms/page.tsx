@@ -174,7 +174,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-lg font-semibold text-text-primary mt-8 mb-3">十二、适用法律</h2>
               <p>
-                本协议适用中华人民共和国法律。因本协议引起的任何争议，双方应友好协商解决；协商不成的，应提交至本平台运营方所在地有管辖权的人民法院解决。
+                本协议适用中华人民共和国法律。因本协议引起的任何争议，双方应友好协商解决。
               </p>
             </section>
 

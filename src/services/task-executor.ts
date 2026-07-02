@@ -135,12 +135,12 @@ export async function executeTask(
         result = await executeOsGameCheckin(client, '绝区零', 'https://sg-act-nap-api.hoyolab.com/event/luna/zzz/os', ACT_IDS.OS_ZZZ, cookie);
         break;
 
-      // 云游戏签到（需要 combo_token）
+      // 云游戏签到（使用独立的 combo_token 认证，不能复用米游社客户端）
       case 'CLOUD_GENSHIN': {
         log.info('执行云原神签到');
         const extraData = account.extra as any;
         const comboToken = extraData?.cloud_genshin_token;
-        const cloudResult = await executeCloudGameCheckin(client, '云原神', 'genshin', comboToken);
+        const cloudResult = await executeCloudGameCheckin(null, '云原神', 'genshin', comboToken);
         result = {
           status: cloudResult.success ? 'SUCCESS' : 'FAILED',
           message: cloudResult.message,
@@ -152,7 +152,7 @@ export async function executeTask(
         log.info('执行云绝区零签到');
         const extraDataZzz = account.extra as any;
         const comboTokenZzz = extraDataZzz?.cloud_zzz_token;
-        const cloudResultZzz = await executeCloudGameCheckin(client, '云绝区零', 'zzz', comboTokenZzz);
+        const cloudResultZzz = await executeCloudGameCheckin(null, '云绝区零', 'zzz', comboTokenZzz);
         result = {
           status: cloudResultZzz.success ? 'SUCCESS' : 'FAILED',
           message: cloudResultZzz.message,

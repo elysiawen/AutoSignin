@@ -5,7 +5,7 @@ import { HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 interface HelpGuideProps {
   platform: 'MIYOUSHE' | 'HOYOLAB' | 'KUJIEQU' | 'TAYGEDO' | 'SKLAND';
-  field: 'cookie' | 'stoken' | 'cloudToken' | 'token';
+  field: 'cookie' | 'stoken' | 'cloudGenshinToken' | 'cloudZzzToken' | 'token';
   onOpenKuroLogin?: () => void;
   onOpenMysLogin?: () => void;
   onOpenMysQrLogin?: () => void;
@@ -46,19 +46,34 @@ export default function HelpGuide({ platform, field, onOpenKuroLogin, onOpenMysL
               { text: 'Hutao 文档', url: 'https://hut.ao/zh/advanced/get-stoken-cookie-from-the-third-party.html' },
             ],
           };
-        case 'cloudToken':
+        case 'cloudGenshinToken':
           return {
-            title: '获取云游戏 Token',
+            title: '获取云原神 Token（网页版）',
             steps: [
               '打开浏览器无痕模式',
               '打开云原神网页版并登录',
               '按 F12 打开开发者工具',
-              '在筛选器里输入 wallet/wallet/get',
+              '在 Network 筛选器里输入 wallet/wallet/get',
               '选择 status 为 200 的记录',
-              '点击记录，找到 X-Rpc-Combo_token 并复制',
+              '点击记录，在 Request Headers 中找到 X-Rpc-Combo_token 并复制',
             ],
             links: [
               { text: '云原神网页版', url: 'https://ys.mihoyo.com/cloud/#/' },
+            ],
+          };
+        case 'cloudZzzToken':
+          return {
+            title: '获取云绝区零 Token（手机抓包）',
+            steps: [
+              '云绝区零无网页版，需通过手机 App 抓包获取',
+              '在手机上安装抓包工具（如 Stream、HttpCanary 等）',
+              '打开抓包工具，启动抓包',
+              '打开云绝区零 App，进入签到/福利页面',
+              '在抓包记录中筛选 wallet/wallet/get 请求',
+              '找到 X-Rpc-Combo_token 请求头并复制',
+            ],
+            links: [
+              { text: '云绝区零 App（官网）', url: 'https://zzz.mihoyo.com/cloud/' },
             ],
           };
         default:
