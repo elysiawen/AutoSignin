@@ -203,6 +203,9 @@ enum NotificationProvider {
   TELEGRAM
   DISCORD
   ONEBOT
+  FEISHU
+  DINGTALK
+  EMAIL
 }
 
 enum NotificationEvent {

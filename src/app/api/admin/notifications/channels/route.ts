@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '名称和提供商不能为空' }, { status: 400 });
     }
 
-    const validProviders = ['TELEGRAM', 'DISCORD', 'ONEBOT'];
+    const validProviders = ['TELEGRAM', 'DISCORD', 'ONEBOT', 'FEISHU', 'DINGTALK', 'EMAIL'];
     if (!validProviders.includes(provider)) {
       return NextResponse.json({ error: '无效的提供商类型' }, { status: 400 });
     }

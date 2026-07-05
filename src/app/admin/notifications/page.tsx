@@ -24,6 +24,9 @@ const PROVIDERS = [
     { key: 'apiUrl', label: 'API 地址', placeholder: 'http://localhost:5700' },
     { key: 'accessToken', label: 'Access Token（可选）', placeholder: '' },
   ] },
+  { value: 'FEISHU', label: '飞书', color: 'bg-cyan-500', configFields: [] },
+  { value: 'DINGTALK', label: '钉钉', color: 'bg-sky-500', configFields: [] },
+  { value: 'EMAIL', label: '邮件 (SMTP)', color: 'bg-emerald-500', configFields: [] },
 ];
 
 export default function AdminNotificationsPage() {

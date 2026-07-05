@@ -4,6 +4,9 @@ import prisma from '@/lib/prisma';
 import { TelegramProvider } from '@/services/notification/telegram';
 import { DiscordProvider } from '@/services/notification/discord';
 import { OneBotProvider } from '@/services/notification/onebot';
+import { FeishuProvider } from '@/services/notification/feishu';
+import { DingTalkProvider } from '@/services/notification/dingtalk';
+import { EmailProvider } from '@/services/notification/email';
 import { NotifyContext } from '@/services/notification/types';
 import { NotificationSource } from '@/generated/prisma/enums';
 
@@ -11,6 +14,9 @@ const providers: Record<string, { send: (target: Record<string, any>, ctx: Notif
   TELEGRAM: new TelegramProvider(),
   DISCORD: new DiscordProvider(),
   ONEBOT: new OneBotProvider(),
+  FEISHU: new FeishuProvider(),
+  DINGTALK: new DingTalkProvider(),
+  EMAIL: new EmailProvider(),
 };
 
 const TEST_CTX: NotifyContext = {

@@ -5,6 +5,9 @@ import { NotifyContext, NotifyProvider, formatSummaryMessage, type TaskResultSum
 import { TelegramProvider } from './telegram';
 import { DiscordProvider } from './discord';
 import { OneBotProvider } from './onebot';
+import { FeishuProvider } from './feishu';
+import { DingTalkProvider } from './dingtalk';
+import { EmailProvider } from './email';
 
 const log = createLogger('通知服务');
 
@@ -12,6 +15,9 @@ const providers: Record<string, NotifyProvider> = {
   TELEGRAM: new TelegramProvider(),
   DISCORD: new DiscordProvider(),
   ONEBOT: new OneBotProvider(),
+  FEISHU: new FeishuProvider(),
+  DINGTALK: new DingTalkProvider(),
+  EMAIL: new EmailProvider(),
 };
 
 /**

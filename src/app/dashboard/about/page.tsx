@@ -126,7 +126,7 @@ export default function AboutPage() {
             { icon: '🗺️', name: 'TeyvatGuide', desc: '米游社登录、设备信息（上游项目）', url: 'https://github.com/BTMuli/TeyvatGuide', commit: '8964681' },
             { icon: '🎮', name: 'Kuro-autosignin', desc: '库街区自动签到（上游项目）', url: 'https://github.com/mxyooR/Kuro-autosignin', commit: 'a334796' },
             { icon: '🔑', name: 'Kuro_login', desc: '库街区 Token 获取工具', url: 'https://github.com/mxyooR/Kuro_login', commit: 'b69ef1a' },
-            { icon: '🎯', name: 'taygedo-auto-attendance', desc: '塔吉多自动签到（上游项目）', url: 'https://github.com/mxyooR/taygedo-auto-attendance', commit: 'c9b38d4' },
+            { icon: '🎯', name: 'taygedo-auto-attendance', desc: '塔吉多自动签到（上游项目）', url: 'https://github.com/zzstar101/taygedo-auto-attendance', commit: 'c9b38d4' },
             { icon: '🏝️', name: 'skland-daily-attendance', desc: '森空岛自动签到（上游项目）', url: 'https://github.com/AEtherside/skland-daily-attendance', commit: 'ac37412' },
           ].map((link) => (
             <a

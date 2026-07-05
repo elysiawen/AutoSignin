@@ -72,9 +72,9 @@ export default function KuroLoginModal({ open, onClose, onFill }: KuroLoginModal
         <div className="bg-muted/50 rounded-xl p-4">
           <p className="text-sm font-medium text-text-secondary mb-2">操作步骤</p>
           <ol className="space-y-1.5 text-xs text-text-tertiary">
-            <li>1. 打开 <a href="https://www.kurobbs.com/mc/home/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">库街区官网</a> 并登录</li>
-            <li>2. 触发短信验证码（<span className="text-destructive font-medium">不要点登录</span>）</li>
-            <li>3. 在下方输入手机号和验证码，点击登录</li>
+            <li>1. 打开 <a href="https://www.kurobbs.com/mc/home/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">库街区官网</a> 并打开登录页面</li>
+            <li>2. 输入手机号，触发短信验证码（<span className="text-destructive font-medium">不要点登录</span>）</li>
+            <li>3. 在下方输入手机号和验证码，点击登录即可</li>
           </ol>
         </div>
 

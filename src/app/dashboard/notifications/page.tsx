@@ -27,12 +27,18 @@ const PROVIDER_LABELS: Record<string, string> = {
   TELEGRAM: 'Telegram',
   DISCORD: 'Discord',
   ONEBOT: 'QQ (OneBot)',
+  FEISHU: '飞书',
+  DINGTALK: '钉钉',
+  EMAIL: '邮件 (SMTP)',
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
   TELEGRAM: 'bg-blue-500',
   DISCORD: 'bg-indigo-500',
   ONEBOT: 'bg-orange-500',
+  FEISHU: 'bg-cyan-500',
+  DINGTALK: 'bg-sky-500',
+  EMAIL: 'bg-emerald-500',
 };
 
 const EVENT_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; color: string }> = {
@@ -60,6 +66,9 @@ export default function NotificationsPage() {
     targetType: 'private',
     targetId: '',
     webhookUrl: '',
+    feishuWebhook: '',
+    dingtalkWebhook: '',
+    emailAddr: '',
     chatId: '',
     events: ['FAILED', 'CAPTCHA'] as string[],
     sources: ['AUTO', 'MANUAL'] as string[],
@@ -85,7 +94,7 @@ export default function NotificationsPage() {
   };
 
   const resetForm = () => {
-    setForm({ channelId: '', targetType: 'private', targetId: '', webhookUrl: '', chatId: '', events: ['FAILED', 'CAPTCHA'], sources: ['AUTO', 'MANUAL'] });
+    setForm({ channelId: '', targetType: 'private', targetId: '', webhookUrl: '', feishuWebhook: '', dingtalkWebhook: '', emailAddr: '', chatId: '', events: ['FAILED', 'CAPTCHA'], sources: ['AUTO', 'MANUAL'] });
     setEditingBinding(null);
   };
 
@@ -99,6 +108,9 @@ export default function NotificationsPage() {
       targetType: target.targetType || 'private',
       targetId: target.targetId || '',
       webhookUrl: target.webhookUrl || '',
+      feishuWebhook: target.webhookUrl || '',
+      dingtalkWebhook: target.webhookUrl || '',
+      emailAddr: target.email || '',
       chatId: target.chatId || '',
       events: [...binding.events],
       sources: binding.sources?.length ? [...binding.sources] : ['AUTO', 'MANUAL'],
@@ -111,6 +123,9 @@ export default function NotificationsPage() {
     if (selectedChannel.provider === 'TELEGRAM') return form.chatId ? { chatId: form.chatId } : null;
     if (selectedChannel.provider === 'DISCORD') return form.webhookUrl ? { webhookUrl: form.webhookUrl } : null;
     if (selectedChannel.provider === 'ONEBOT') return form.targetId ? { targetType: form.targetType, targetId: form.targetId } : null;
+    if (selectedChannel.provider === 'FEISHU') return form.feishuWebhook ? { webhookUrl: form.feishuWebhook } : null;
+    if (selectedChannel.provider === 'DINGTALK') return form.dingtalkWebhook ? { webhookUrl: form.dingtalkWebhook } : null;
+    if (selectedChannel.provider === 'EMAIL') return form.emailAddr ? { email: form.emailAddr } : null;
     return null;
   };
 
@@ -147,6 +162,15 @@ export default function NotificationsPage() {
       if (!form.targetId) { toast.error('请输入目标 ID'); return; }
       target.targetType = form.targetType;
       target.targetId = form.targetId;
+    } else if (selectedChannel?.provider === 'FEISHU') {
+      if (!form.feishuWebhook) { toast.error('请输入飞书 Webhook URL'); return; }
+      target.webhookUrl = form.feishuWebhook;
+    } else if (selectedChannel?.provider === 'DINGTALK') {
+      if (!form.dingtalkWebhook) { toast.error('请输入钉钉 Webhook URL'); return; }
+      target.webhookUrl = form.dingtalkWebhook;
+    } else if (selectedChannel?.provider === 'EMAIL') {
+      if (!form.emailAddr) { toast.error('请输入邮箱地址'); return; }
+      target.email = form.emailAddr;
     }
     if (form.events.length === 0) { toast.error('请至少选择一种事件类型'); return; }
 
@@ -377,6 +401,30 @@ export default function NotificationsPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-2">{form.targetType === 'group' ? '群号' : 'QQ 号'}</label>
                 <input type="text" value={form.targetId} onChange={(e) => setForm({ ...form, targetId: e.target.value })} placeholder={form.targetType === 'group' ? '输入群号' : '输入 QQ 号'} className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
               </div>
+            </div>
+          )}
+
+          {selectedChannel?.provider === 'FEISHU' && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Webhook URL</label>
+              <input type="text" value={form.feishuWebhook} onChange={(e) => setForm({ ...form, feishuWebhook: e.target.value })} placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
+              <p className="text-xs text-text-quaternary mt-1.5">在飞书群中添加自定义机器人，获取 Webhook 地址</p>
+            </div>
+          )}
+
+          {selectedChannel?.provider === 'DINGTALK' && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Webhook URL</label>
+              <input type="text" value={form.dingtalkWebhook} onChange={(e) => setForm({ ...form, dingtalkWebhook: e.target.value })} placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
+              <p className="text-xs text-text-quaternary mt-1.5">在钉钉群中添加自定义机器人，获取 Webhook 地址</p>
+            </div>
+          )}
+
+          {selectedChannel?.provider === 'EMAIL' && (
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">接收邮箱</label>
+              <input type="email" value={form.emailAddr} onChange={(e) => setForm({ ...form, emailAddr: e.target.value })} placeholder="your@email.com" className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
+              <p className="text-xs text-text-quaternary mt-1.5">需要通过环境变量配置 SMTP（SMTP_HOST/PORT/USER/PASS）</p>
             </div>
           )}
 

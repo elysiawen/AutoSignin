@@ -229,7 +229,7 @@ autosign-platform/
 
 ### 塔吉多 Token
 
-使用 [taygedo-auto-attendance](https://github.com/mxyooR/taygedo-auto-attendance) 项目获取 Refresh Token。
+使用 [taygedo-auto-attendance](https://github.com/zzstar101/taygedo-auto-attendance) 项目获取 Refresh Token。
 
 ### 森空岛 Token
 
@@ -284,7 +284,7 @@ npm run start
 - [mihoyo_login](https://github.com/Womsxd/mihoyo_login) - 米游社 Stoken 获取
 - [Kuro-autosignin](https://github.com/mxyooR/Kuro-autosignin) - 库街区自动签到
 - [Kuro_login](https://github.com/mxyooR/Kuro_login) - 库街区 Token 获取
-- [taygedo-auto-attendance](https://github.com/mxyooR/taygedo-auto-attendance) - 塔吉多自动签到
+- [taygedo-auto-attendance](https://github.com/zzstar101/taygedo-auto-attendance) - 塔吉多自动签到
 - [skland-daily-attendance](https://github.com/skillnull/skland-daily-attendance) - 森空岛自动签到参考
 
 ## 许可证
