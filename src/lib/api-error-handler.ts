@@ -61,12 +61,17 @@ export function withErrorHandling(handler: RouteHandler): RouteHandler {
     } catch (error) {
       const { message, status } = sanitizeError(error);
 
-      // 记录完整错误到服务端日志（不暴露给客户端）
-      const errObj = error instanceof Error ? error : new Error(String(error));
-      log.error(`${request.method} ${request.nextUrl.pathname} → ${status}`, {
-        error: errObj.message,
-        stack: process.env.NODE_ENV === 'production' ? undefined : errObj.stack,
-      });
+      if (error instanceof ApiError) {
+        // 预期内的业务报错（频率限制、参数校验、SMTP未配置等）— warn 级别，不打堆栈
+        log.warn(`${request.method} ${request.nextUrl.pathname} → ${status}: ${message}`);
+      } else {
+        // 未预期的异常 — error 级别，打完整信息
+        const errObj = error instanceof Error ? error : new Error(String(error));
+        log.error(`${request.method} ${request.nextUrl.pathname} → ${status}`, {
+          error: errObj.message,
+          stack: process.env.NODE_ENV === 'production' ? undefined : errObj.stack,
+        });
+      }
 
       return NextResponse.json({ error: message }, { status });
     }

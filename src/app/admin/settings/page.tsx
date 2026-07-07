@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Database, Loader2, Plus, Trash2, Play, Save, Activity, UserPlus, UserX, Mail, MailX } from 'lucide-react';
+import { Database, Loader2, Plus, Trash2, Play, Save, Activity, UserPlus, UserX, Mail, MailX, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
 
@@ -31,6 +31,7 @@ export default function AdminSettingsPage() {
   const [togglingRegistration, setTogglingRegistration] = useState(false);
   const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(true);
   const [togglingEmailVerification, setTogglingEmailVerification] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -49,6 +50,8 @@ export default function AdminSettingsPage() {
         // 从设置中读取邮箱验证开关状态
         const emailVerSetting = data.settings.find((s: Setting) => s.key === 'email_verification_enabled');
         setEmailVerificationEnabled(!emailVerSetting || emailVerSetting.value === 'true');
+        // 读取 SMTP 配置状态
+        setSmtpConfigured(data.smtpConfigured || false);
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -92,6 +95,12 @@ export default function AdminSettingsPage() {
     const newValue = emailVerificationEnabled ? 'false' : 'true';
     const label = emailVerificationEnabled ? '关闭' : '开启';
 
+    // 开启邮箱验证时，先检查 SMTP 是否已配置
+    if (!emailVerificationEnabled && !smtpConfigured) {
+      toast.error('SMTP 邮件服务未配置，无法开启邮箱验证码。请在环境变量中配置 SMTP_HOST、SMTP_USER、SMTP_PASS 后重试。');
+      return;
+    }
+
     const confirmed = await confirm(
       `确定要${label}邮箱验证码吗？`,
       { title: `${label}邮箱验证`, confirmText: '确定', confirmColor: emailVerificationEnabled ? 'red' : 'blue' }
@@ -110,7 +119,8 @@ export default function AdminSettingsPage() {
         fetchData();
         toast.success(`已${label}邮箱验证码`);
       } else {
-        toast.error('操作失败');
+        const data = await response.json();
+        toast.error(data.error || '操作失败');
       }
     } catch (error) {
       toast.error('操作失败');
@@ -283,16 +293,22 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* Email Verification Toggle */}
-      <div className="bg-card rounded-2xl border border-border p-6 mb-6 animate-slide-in-up">
+      <div className={`bg-card rounded-2xl border p-6 mb-6 animate-slide-in-up ${emailVerificationEnabled && !smtpConfigured ? 'border-destructive/50 bg-destructive/5' : 'border-border'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${emailVerificationEnabled ? 'bg-accent' : 'bg-muted'}`}>
-              {emailVerificationEnabled ? <Mail className="h-5 w-5 text-white" /> : <MailX className="h-5 w-5 text-text-tertiary" />}
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${emailVerificationEnabled && !smtpConfigured ? 'bg-destructive' : emailVerificationEnabled ? 'bg-accent' : 'bg-muted'}`}>
+              {emailVerificationEnabled && !smtpConfigured ? <AlertTriangle className="h-5 w-5 text-white" /> : emailVerificationEnabled ? <Mail className="h-5 w-5 text-white" /> : <MailX className="h-5 w-5 text-text-tertiary" />}
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">邮箱验证码</h2>
               <p className="text-sm text-text-tertiary">
-                {emailVerificationEnabled ? '注册时需要邮箱验证码，防止恶意注册' : '注册时无需邮箱验证码'}
+                {emailVerificationEnabled && !smtpConfigured
+                  ? '⚠️ 已开启但 SMTP 邮件服务未配置，邮件将无法发送'
+                  : emailVerificationEnabled
+                    ? '注册时需要邮箱验证码，防止恶意注册'
+                    : !smtpConfigured
+                      ? 'SMTP 邮件服务未配置，无法开启'
+                      : '注册时无需邮箱验证码'}
               </p>
             </div>
           </div>

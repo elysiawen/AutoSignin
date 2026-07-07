@@ -75,8 +75,19 @@ export default function NotificationsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState(true);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); fetchSmtpStatus(); }, []);
+
+  const fetchSmtpStatus = async () => {
+    try {
+      const res = await fetch('/api/system/smtp-status');
+      if (res.ok) {
+        const data = await res.json();
+        setSmtpConfigured(data.configured);
+      }
+    } catch {}
+  };
 
   const fetchData = async () => {
     try {
@@ -424,7 +435,12 @@ export default function NotificationsPage() {
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">接收邮箱</label>
               <input type="email" value={form.emailAddr} onChange={(e) => setForm({ ...form, emailAddr: e.target.value })} placeholder="your@email.com" className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
-              <p className="text-xs text-text-quaternary mt-1.5">需要通过环境变量配置 SMTP（SMTP_HOST/PORT/USER/PASS）</p>
+              {!smtpConfigured && (
+                <p className="text-xs text-destructive mt-1.5">SMTP 邮件服务未配置，邮件通知将无法发送。请联系管理员在环境变量中配置 SMTP_HOST、SMTP_USER、SMTP_PASS。</p>
+              )}
+              {smtpConfigured && (
+                <p className="text-xs text-text-quaternary mt-1.5">需要通过环境变量配置 SMTP（SMTP_HOST/PORT/USER/PASS）</p>
+              )}
             </div>
           )}
 

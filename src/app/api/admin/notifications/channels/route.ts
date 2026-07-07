@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { isSmtpConfigured } from '@/lib/email';
 
 /**
  * GET /api/admin/notifications/channels
@@ -64,8 +65,17 @@ export async function POST(request: NextRequest) {
         provider,
         config: config || {},
         createdBy: userId,
+        // 如果 SMTP 未配置，EMAIL 渠道默认禁用
+        enabled: provider === 'EMAIL' ? isSmtpConfigured() : true,
       },
     });
+
+    if (provider === 'EMAIL' && !isSmtpConfigured()) {
+      return NextResponse.json({
+        message: '邮件渠道已创建但暂未启用：SMTP 邮件服务未配置。请在环境变量中配置 SMTP_HOST、SMTP_USER、SMTP_PASS 后手动启用。',
+        channel,
+      }, { status: 201 });
+    }
 
     return NextResponse.json({ message: '渠道创建成功', channel }, { status: 201 });
   } catch (error) {
@@ -101,7 +111,20 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
     if (config !== undefined) updateData.config = config;
-    if (enabled !== undefined) updateData.enabled = enabled;
+
+    // 启用 EMAIL 渠道时检查 SMTP 是否已配置
+    if (enabled === true) {
+      const existing = await prisma.notificationChannel.findUnique({
+        where: { id },
+        select: { provider: true },
+      });
+      if (existing?.provider === 'EMAIL' && !isSmtpConfigured()) {
+        return NextResponse.json({ error: 'SMTP 邮件服务未配置，无法启用邮件渠道。请在环境变量中配置 SMTP_HOST、SMTP_USER、SMTP_PASS 后重试。' }, { status: 400 });
+      }
+      updateData.enabled = enabled;
+    } else if (enabled !== undefined) {
+      updateData.enabled = enabled;
+    }
 
     const channel = await prisma.notificationChannel.update({
       where: { id },

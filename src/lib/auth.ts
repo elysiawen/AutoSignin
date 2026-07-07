@@ -5,6 +5,12 @@ import { verifyPassword } from './utils';
 import { checkRateLimit } from './rate-limit';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // 关闭 Auth.js 内置日志，避免每次登录失败打印 CredentialsSignin 堆栈
+  logger: {
+    error: () => {},
+    warn: () => {},
+    debug: () => {},
+  },
   providers: [
     Credentials({
       name: 'credentials',

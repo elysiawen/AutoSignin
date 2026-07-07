@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Bell, Plus, Trash2, Pencil, Send } from 'lucide-react';
+import { Loader2, Bell, Plus, Trash2, Pencil, Send, AlertTriangle } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
@@ -43,8 +43,19 @@ export default function AdminNotificationsPage() {
     config: {} as Record<string, string>,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
 
-  useEffect(() => { fetchChannels(); }, []);
+  useEffect(() => { fetchChannels(); fetchSmtpStatus(); }, []);
+
+  const fetchSmtpStatus = async () => {
+    try {
+      const res = await fetch('/api/system/smtp-status');
+      if (res.ok) {
+        const data = await res.json();
+        setSmtpConfigured(data.configured);
+      }
+    } catch {}
+  };
 
   const fetchChannels = async () => {
     try {
@@ -80,7 +91,13 @@ export default function AdminNotificationsPage() {
       const method = editingChannel ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), provider: form.provider, config: form.config }) });
       if (res.ok) {
-        toast.success(editingChannel ? '渠道更新成功' : '渠道创建成功');
+        const data = await res.json();
+        if (data.channel && !data.channel.enabled) {
+          // EMAIL 渠道创建成功但未启用（SMTP 未配置）
+          toast.info(data.message);
+        } else {
+          toast.success(editingChannel ? '渠道更新成功' : '渠道创建成功');
+        }
         setShowModal(false);
         resetForm();
         fetchChannels();
@@ -93,6 +110,12 @@ export default function AdminNotificationsPage() {
   };
 
   const handleToggle = async (channel: Channel) => {
+    // 启用 EMAIL 渠道时检查 SMTP 是否已配置
+    if (!channel.enabled && channel.provider === 'EMAIL' && !smtpConfigured) {
+      toast.error('SMTP 邮件服务未配置，无法启用邮件渠道。请在环境变量中配置 SMTP_HOST、SMTP_USER、SMTP_PASS 后重试。');
+      return;
+    }
+
     try {
       const res = await fetch(`/api/admin/notifications/channels?id=${channel.id}`, {
         method: 'PUT',
@@ -152,11 +175,12 @@ export default function AdminNotificationsPage() {
           {channels.map((channel) => {
             const provider = PROVIDERS.find((p) => p.value === channel.provider);
             const providerColor = provider?.color || 'bg-gray-500';
+            const isEmailNeedSmtp = channel.provider === 'EMAIL' && channel.enabled && !smtpConfigured;
             return (
               <div
                 key={channel.id}
-                className={`bg-card rounded-2xl border border-border transition-all duration-200 ${
-                  channel.enabled ? 'hover:border-accent/30 hover:shadow-md' : 'opacity-60'
+                className={`bg-card rounded-2xl border transition-all duration-200 ${
+                  isEmailNeedSmtp ? 'border-destructive/50 bg-destructive/5' : channel.enabled ? 'border-border hover:border-accent/30 hover:shadow-md' : 'border-border opacity-60'
                 }`}
               >
                 <div className="flex items-center gap-4 p-4 sm:p-5">
@@ -171,6 +195,12 @@ export default function AdminNotificationsPage() {
                       <span className="font-semibold text-text-primary text-sm">{channel.name}</span>
                       <span className="text-xs text-text-quaternary">·</span>
                       <span className="text-xs text-text-tertiary">{provider?.label || channel.provider}</span>
+                      {isEmailNeedSmtp && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded bg-destructive/10 text-destructive">
+                          <AlertTriangle className="h-3 w-3" />
+                          SMTP 未配置
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-text-quaternary">
                       <span>{channel._count.bindings} 个绑定</span>

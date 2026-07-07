@@ -3,6 +3,13 @@ import { createLogger } from './logger';
 
 const log = createLogger('Email');
 
+/**
+ * 检查 SMTP 环境变量是否已配置
+ */
+export function isSmtpConfigured(): boolean {
+  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
 function createTransporter() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT) || 465;
