@@ -118,7 +118,7 @@ export async function PUT(request: NextRequest) {
         where: { id },
         select: { provider: true },
       });
-      if (existing?.provider === 'EMAIL' && !isSmtpConfigured()) {
+      if ((existing?.provider as string) === 'EMAIL' && !isSmtpConfigured()) {
         return NextResponse.json({ error: 'SMTP 邮件服务未配置，无法启用邮件渠道。请在环境变量中配置 SMTP_HOST、SMTP_USER、SMTP_PASS 后重试。' }, { status: 400 });
       }
       updateData.enabled = enabled;
