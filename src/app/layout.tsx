@@ -6,6 +6,7 @@ import { SessionProvider } from '@/components/SessionProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/Confirm';
 import LoadingBar from '@/components/LoadingBar';
+import Analytics from '@/components/Analytics';
 import './globals.css';
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        <Analytics />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <SessionProvider>
             <Suspense fallback={null}>
