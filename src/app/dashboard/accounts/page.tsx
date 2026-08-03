@@ -1,34 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Users, Gamepad2, Globe, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Users, Gamepad2, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import Image from 'next/image';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
-import HelpGuide from '@/components/HelpGuide';
-import KuroLoginModal from '@/components/tools/KuroLoginModal';
-import MysLoginModal from '@/components/tools/MysLoginModal';
-import MysQrLoginModal from '@/components/tools/MysQrLoginModal';
 import { platformNames, platformIcons, platformColors } from '@/lib/icons';
+import { platforms, getPlatform } from './platforms/registry';
+import type { FormData, Account } from './platforms/types';
 
-interface Account {
-  id: string;
-  platform: string;
-  name: string;
-  isActive: boolean;
-  createdAt: string;
-  _count: { tasks: number };
-  extra?: {
-    kuroUserId?: string;
-    wwroleId?: string;
-    pgrRoleId?: string;
-    devcode?: string;
-    distinct_id?: string;
-    cloud_genshin_token?: string;
-    cloud_zzz_token?: string;
-  } | null;
-}
+const INITIAL_PLATFORM = 'MIYOUSHE';
 
 export default function AccountsPage() {
   const toast = useToast();
@@ -38,41 +20,14 @@ export default function AccountsPage() {
   const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [formData, setFormData] = useState({
-    platform: 'MIYOUSHE',
-    name: '',
-    cookie: '',
-    stoken: '',
-    uid: '',
-    mid: '',
-    cloudGenshinToken: '',
-    cloudZzzToken: '',
-    // 库街区字段
-    kuroToken: '',
-    devcode: '',
-    distinctId: '',
-    kuroUserId: '',
-    wwroleId: '',
-    pgrRoleId: '',
-    // 塔吉多字段
-    taygedoLoginMode: 'token' as 'token' | 'password' | 'captcha',
-    taygedoAccessToken: '',
-    taygedoRefreshToken: '',
-    taygedoDeviceId: '',
-    taygedoPhone: '',
-    taygedoPassword: '',
-    taygedoCaptcha: '',
-    taygedoSendingCaptcha: false,
-    taygedoCaptchaSent: false,
-    taygedoCaptchaCooldown: 0,
-    taygedoHasPassword: false,
-    taygedoLaohuToken: '',
-    taygedoLaohuUserId: '',
+  const [currentPlatform, setCurrentPlatform] = useState(INITIAL_PLATFORM);
+  const [formData, setFormData] = useState<FormData>(() => {
+    const platform = getPlatform(INITIAL_PLATFORM)!;
+    return { platform: INITIAL_PLATFORM, name: '', ...platform.getDefaultFormData() };
   });
   const [showOptional, setShowOptional] = useState(false);
-  const [showKuroModal, setShowKuroModal] = useState(false);
-  const [showMysLoginModal, setShowMysLoginModal] = useState(false);
-  const [showMysQrLoginModal, setShowMysQrLoginModal] = useState(false);
+
+  const platformConfig = getPlatform(currentPlatform);
 
   useEffect(() => {
     fetchAccounts();
@@ -92,9 +47,17 @@ export default function AccountsPage() {
     }
   };
 
+  const resetForm = useCallback((platformId: string) => {
+    const cfg = getPlatform(platformId);
+    if (!cfg) return;
+    setCurrentPlatform(platformId);
+    setFormData({ platform: platformId, name: '', ...cfg.getDefaultFormData() });
+    setShowOptional(false);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (saving) return; // 防止重复提交
+    if (saving) return;
     setSaving(true);
 
     try {
@@ -103,78 +66,12 @@ export default function AccountsPage() {
         : '/api/accounts';
       const method = editingAccount ? 'PUT' : 'POST';
 
-      // 构建提交数据，只包含需要的字段
+      const cfg = getPlatform(currentPlatform)!;
       const submitData: any = {
-        platform: formData.platform,
+        platform: currentPlatform,
         name: formData.name,
+        ...cfg.buildSubmitData(formData, !!editingAccount),
       };
-
-      // 处理 cookie 字段
-      const cookieValue = formData.platform === 'KUJIEQU' ? formData.kuroToken
-        : formData.platform === 'TAYGEDO' ? (formData.taygedoLoginMode === 'token' ? formData.taygedoAccessToken : '')
-        : formData.cookie;
-      // 新增时必须有 cookie，编辑时只有用户填写了才提交
-      if (cookieValue) {
-        submitData.cookie = cookieValue;
-      } else if (!editingAccount) {
-        submitData.cookie = '';
-      }
-
-      // 处理 stoken 字段
-      const stokenValue = formData.platform === 'TAYGEDO'
-        ? (formData.taygedoLoginMode === 'token' ? formData.taygedoRefreshToken : '')
-        : formData.stoken;
-      // 只有用户填写了 stoken 才提交
-      if (stokenValue) {
-        submitData.stoken = stokenValue;
-      }
-
-      // 处理 uid 字段
-      if (formData.platform !== 'TAYGEDO' && formData.platform !== 'SKLAND' && formData.uid) {
-        submitData.uid = formData.uid;
-      }
-
-      // 处理 mid 字段
-      if (formData.mid) {
-        submitData.mid = formData.mid;
-      }
-
-      // 处理 extra 字段
-      const extra: any = {};
-
-      // 米游社云游戏 token
-      if (formData.cloudGenshinToken) extra.cloud_genshin_token = formData.cloudGenshinToken;
-      if (formData.cloudZzzToken) extra.cloud_zzz_token = formData.cloudZzzToken;
-
-      // 库街区字段
-      if (formData.platform === 'KUJIEQU') {
-        if (formData.devcode) extra.devcode = formData.devcode;
-        if (formData.distinctId) extra.distinct_id = formData.distinctId;
-        if (formData.kuroUserId) extra.kuroUserId = formData.kuroUserId;
-        if (formData.wwroleId) extra.wwroleId = formData.wwroleId;
-        if (formData.pgrRoleId) extra.pgrRoleId = formData.pgrRoleId;
-      }
-
-      // 塔吉多字段
-      if (formData.platform === 'TAYGEDO') {
-        extra.taygedoLoginMode = formData.taygedoLoginMode;
-        if (formData.taygedoDeviceId) extra.deviceId = formData.taygedoDeviceId;
-        if (formData.taygedoLoginMode === 'password') {
-          if (formData.taygedoPhone) extra.phone = formData.taygedoPhone;
-          if (formData.taygedoPassword) extra.password = formData.taygedoPassword;
-        }
-        if (formData.taygedoLoginMode === 'captcha') {
-          if (formData.taygedoPhone) extra.phone = formData.taygedoPhone;
-          if (formData.taygedoCaptcha) extra.captcha = formData.taygedoCaptcha;
-        }
-        if (formData.taygedoLaohuToken) extra.laohuToken = formData.taygedoLaohuToken;
-        if (formData.taygedoLaohuUserId) extra.laohuUserId = formData.taygedoLaohuUserId;
-      }
-
-      // 只有 extra 有内容时才提交
-      if (Object.keys(extra).length > 0) {
-        submitData.extra = extra;
-      }
 
       const response = await fetch(url, {
         method,
@@ -185,35 +82,7 @@ export default function AccountsPage() {
       if (response.ok) {
         setShowModal(false);
         setEditingAccount(null);
-        setFormData({
-          platform: 'MIYOUSHE',
-          name: '',
-          cookie: '',
-          stoken: '',
-          uid: '',
-          mid: '',
-          cloudGenshinToken: '',
-          cloudZzzToken: '',
-          kuroToken: '',
-          devcode: '',
-          distinctId: '',
-          kuroUserId: '',
-          wwroleId: '',
-          pgrRoleId: '',
-          taygedoLoginMode: 'token' as const,
-          taygedoAccessToken: '',
-          taygedoRefreshToken: '',
-          taygedoDeviceId: '',
-          taygedoPhone: '',
-          taygedoPassword: '',
-          taygedoCaptcha: '',
-          taygedoSendingCaptcha: false,
-          taygedoCaptchaSent: false,
-          taygedoCaptchaCooldown: 0,
-          taygedoHasPassword: false,
-          taygedoLaohuToken: '',
-          taygedoLaohuUserId: '',
-        });
+        resetForm(INITIAL_PLATFORM);
         fetchAccounts();
         toast.success(editingAccount ? '账号已更新' : '账号已添加');
       } else {
@@ -237,10 +106,7 @@ export default function AccountsPage() {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/accounts/${id}`, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
       if (response.ok) {
         fetchAccounts();
         toast.success('账号已删除');
@@ -255,39 +121,25 @@ export default function AccountsPage() {
 
   const handleEdit = (account: Account) => {
     setEditingAccount(account);
-    const extra = (account.extra as any) || {};
+    const cfg = getPlatform(account.platform);
+    if (!cfg) return;
+    setCurrentPlatform(account.platform);
     setFormData({
       platform: account.platform,
       name: account.name,
-      cookie: '',
-      stoken: '',
-      uid: '',
-      mid: '',
-      cloudGenshinToken: extra.cloud_genshin_token || '',
-      cloudZzzToken: extra.cloud_zzz_token || '',
-      kuroToken: '',
-      devcode: extra.devcode || '',
-      distinctId: extra.distinct_id || '',
-      kuroUserId: extra.kuroUserId || '',
-      wwroleId: extra.wwroleId || '',
-      pgrRoleId: extra.pgrRoleId || '',
-      // 塔吉多字段
-      taygedoLoginMode: (extra.taygedoLoginMode || 'token') as 'token' | 'password' | 'captcha',
-      taygedoAccessToken: '',
-      taygedoRefreshToken: '',
-      taygedoDeviceId: extra.deviceId || '',
-      taygedoPhone: extra.phone || '',
-      taygedoPassword: '',
-      taygedoCaptcha: '',
-      taygedoSendingCaptcha: false,
-      taygedoCaptchaSent: false,
-      taygedoCaptchaCooldown: 0,
-      taygedoHasPassword: !!(extra as any)?.password || (!!extra.phone && extra.taygedoLoginMode === 'password'),
-      taygedoLaohuToken: extra.laohuToken || '',
-      taygedoLaohuUserId: extra.laohuUserId || '',
+      ...cfg.fillFormData(account),
     });
-    setShowOptional(false); // 编辑时折叠可选配置
+    setShowOptional(false);
     setShowModal(true);
+  };
+
+  const getPlaceholder = () => {
+    switch (currentPlatform) {
+      case 'KUJIEQU': return '例如：我的鸣潮号';
+      case 'TAYGEDO': return '例如：我的塔吉多号';
+      case 'SKLAND': return '例如：我的森空岛号';
+      default: return '例如：我的原神号';
+    }
   };
 
   if (loading) {
@@ -310,36 +162,7 @@ export default function AccountsPage() {
         <button
           onClick={() => {
             setEditingAccount(null);
-            setFormData({
-              platform: 'MIYOUSHE',
-              name: '',
-              cookie: '',
-              stoken: '',
-              uid: '',
-              mid: '',
-              cloudGenshinToken: '',
-              cloudZzzToken: '',
-              kuroToken: '',
-              devcode: '',
-              distinctId: '',
-              kuroUserId: '',
-              wwroleId: '',
-              pgrRoleId: '',
-              taygedoLoginMode: 'token' as const,
-          taygedoAccessToken: '',
-              taygedoRefreshToken: '',
-              taygedoDeviceId: '',
-              taygedoPhone: '',
-              taygedoPassword: '',
-              taygedoCaptcha: '',
-              taygedoSendingCaptcha: false,
-              taygedoCaptchaSent: false,
-              taygedoCaptchaCooldown: 0,
-              taygedoHasPassword: false,
-              taygedoLaohuToken: '',
-              taygedoLaohuUserId: '',
-            });
-            setShowOptional(false);
+            resetForm(INITIAL_PLATFORM);
             setShowModal(true);
           }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground rounded-xl font-medium text-sm hover:bg-accent-hover shadow-lg shadow-accent/20 hover:shadow-accent/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
@@ -358,12 +181,12 @@ export default function AccountsPage() {
         </div>
       ) : (
         <div className="grid gap-3 sm:gap-6">
-          {accounts.map((account, index) => {
+          {accounts.map((account) => {
             const platformImage = platformIcons[account.platform];
             return (
               <div
                 key={account.id}
-                className={`group relative bg-card rounded-xl sm:rounded-2xl border border-border p-4 sm:p-6 hover:shadow-xl hover:border-accent/20 transition-all duration-300 animate-slide-in-up delay-${index * 50}`}
+                className="group relative bg-card rounded-xl sm:rounded-2xl border border-border p-4 sm:p-6 hover:shadow-xl hover:border-accent/20 transition-all duration-300"
               >
                 {/* 移动端布局 */}
                 <div className="sm:hidden">
@@ -388,16 +211,10 @@ export default function AccountsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleEdit(account)}
-                        className="p-2 text-text-tertiary hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
-                      >
+                      <button onClick={() => handleEdit(account)} className="p-2 text-text-tertiary hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
                         <Pencil className="h-5 w-5" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(account.id)}
-                        className="p-2 text-text-tertiary hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      >
+                      <button onClick={() => handleDelete(account.id)} className="p-2 text-text-tertiary hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
                         <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
@@ -426,16 +243,10 @@ export default function AccountsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEdit(account)}
-                      className="p-2.5 text-text-tertiary hover:text-accent hover:bg-accent/10 rounded-xl transition-all duration-200"
-                    >
+                    <button onClick={() => handleEdit(account)} className="p-2.5 text-text-tertiary hover:text-accent hover:bg-accent/10 rounded-xl transition-all duration-200">
                       <Pencil className="h-5 w-5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(account.id)}
-                      className="p-2.5 text-text-tertiary hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
-                    >
+                    <button onClick={() => handleDelete(account.id)} className="p-2.5 text-text-tertiary hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200">
                       <Trash2 className="h-5 w-5" />
                     </button>
                   </div>
@@ -459,21 +270,15 @@ export default function AccountsPage() {
           {/* 平台选择 - 仅添加时显示 */}
           {!editingAccount && (
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                平台
-              </label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">平台</label>
               <select
-                value={formData.platform}
-                onChange={(e) =>
-                  setFormData({ ...formData, platform: e.target.value })
-                }
+                value={currentPlatform}
+                onChange={(e) => resetForm(e.target.value)}
                 className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary"
               >
-                <option value="MIYOUSHE">米游社（国服）</option>
-                <option value="HOYOLAB">HoYoLAB（国际服）</option>
-                <option value="KUJIEQU">库街区</option>
-                <option value="TAYGEDO">塔吉多</option>
-                <option value="SKLAND">森空岛</option>
+                {platforms.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
               </select>
             </div>
           )}
@@ -489,283 +294,26 @@ export default function AccountsPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              名称
-            </label>
+            <label className="block text-sm font-medium text-text-secondary mb-2">名称</label>
             <input
               type="text"
               required
               value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-              placeholder={formData.platform === 'KUJIEQU' ? '例如：我的鸣潮号' : formData.platform === 'TAYGEDO' ? '例如：我的塔吉多号' : formData.platform === 'SKLAND' ? '例如：我的森空岛号' : '例如：我的原神号'}
+              placeholder={getPlaceholder()}
             />
           </div>
 
-          {/* Cookie 字段 - 库街区和塔吉多不显示（使用自己的 Token 体系） */}
-          {formData.platform !== 'KUJIEQU' && formData.platform !== 'TAYGEDO' && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                {formData.platform === 'SKLAND' ? '鹰角 OAuth Token' : 'Cookie'}
-              </label>
-              <textarea
-                value={formData.cookie}
-                onChange={(e) =>
-                  setFormData({ ...formData, cookie: e.target.value })
-                }
-                rows={formData.platform === 'SKLAND' ? 2 : 3}
-                className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary resize-none"
-                placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : formData.platform === 'SKLAND' ? '粘贴鹰角 OAuth Token（从 web-api.skland.com/account/info/hg 获取 content 字段）' : '粘贴从浏览器获取的 Cookie'}
-              />
-              <HelpGuide
-                platform={formData.platform as 'MIYOUSHE' | 'HOYOLAB'}
-                field={formData.platform === 'SKLAND' ? 'token' : 'cookie'}
-                onOpenMysLogin={() => setShowMysLoginModal(true)}
-                onOpenMysQrLogin={() => setShowMysQrLoginModal(true)}
-              />
-            </div>
-          )}
+          {/* 平台专属字段 */}
+          {platformConfig?.renderFields({ formData, setFormData, editingAccount, toast })}
 
-          {/* 库街区必填字段 - Token */}
-          {formData.platform === 'KUJIEQU' && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">
-                Token
-              </label>
-              <textarea
-                required={!editingAccount}
-                value={formData.kuroToken}
-                onChange={(e) =>
-                  setFormData({ ...formData, kuroToken: e.target.value })
-                }
-                rows={3}
-                className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary resize-none"
-                placeholder={editingAccount ? '已设置（出于安全考虑不显示，留空则不修改）' : '库街区 Token（通过登录工具获取）'}
-              />
-              <HelpGuide platform="KUJIEQU" field="token" onOpenKuroLogin={() => setShowKuroModal(true)} />
-            </div>
-          )}
-
-          {/* 塔吉多登录方式选择 */}
-          {formData.platform === 'TAYGEDO' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  登录方式
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, taygedoLoginMode: 'token' })}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                      formData.taygedoLoginMode === 'token'
-                        ? 'border-accent bg-accent/10 text-accent'
-                        : 'border-border text-text-secondary hover:border-accent/30'
-                    }`}
-                  >
-                    Token 登录
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, taygedoLoginMode: 'password' })}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                      formData.taygedoLoginMode === 'password'
-                        ? 'border-accent bg-accent/10 text-accent'
-                        : 'border-border text-text-secondary hover:border-accent/30'
-                    }`}
-                  >
-                    手机号+密码
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, taygedoLoginMode: 'captcha' })}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                      formData.taygedoLoginMode === 'captcha'
-                        ? 'border-accent bg-accent/10 text-accent'
-                        : 'border-border text-text-secondary hover:border-accent/30'
-                    }`}
-                  >
-                    短信验证码
-                  </button>
-                </div>
-              </div>
-
-              {/* Token 模式 */}
-              {formData.taygedoLoginMode === 'token' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Refresh Token <span className="text-destructive">*</span>
-                    </label>
-                    <textarea
-                      required={!editingAccount}
-                      value={formData.taygedoRefreshToken}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taygedoRefreshToken: e.target.value })
-                      }
-                      rows={2}
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary resize-none"
-                      placeholder={editingAccount ? '留空则不修改' : '塔吉多 Refresh Token'}
-                    />
-                    <HelpGuide platform="TAYGEDO" field="token" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Access Token
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.taygedoAccessToken}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taygedoAccessToken: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                      placeholder="留空则自动获取"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* 密码模式 */}
-              {formData.taygedoLoginMode === 'password' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      手机号 <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required={!editingAccount}
-                      value={formData.taygedoPhone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taygedoPhone: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                      placeholder="塔吉多手机号"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      密码 <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      required={!editingAccount && !formData.taygedoHasPassword}
-                      value={formData.taygedoPassword}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taygedoPassword: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                      placeholder={formData.taygedoHasPassword ? '已设置（留空不修改）' : '塔吉多密码'}
-                    />
-                    {formData.taygedoHasPassword && (
-                      <p className="text-xs text-accent mt-1">密码已设置，如需修改请重新输入，留空则不修改</p>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* 短信验证码模式 */}
-              {formData.taygedoLoginMode === 'captcha' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      手机号 <span className="text-destructive">*</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        required={!editingAccount}
-                        value={formData.taygedoPhone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, taygedoPhone: e.target.value, taygedoCaptchaSent: false })
-                        }
-                        className="flex-1 px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                        placeholder="塔吉多手机号"
-                      />
-                      <button
-                        type="button"
-                        disabled={!formData.taygedoPhone || formData.taygedoSendingCaptcha || formData.taygedoCaptchaCooldown > 0}
-                        onClick={async () => {
-                          if (!formData.taygedoPhone) return;
-                          setFormData({ ...formData, taygedoSendingCaptcha: true });
-                          try {
-                            const res = await fetch('/api/tools/taygedo-captcha', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ phone: formData.taygedoPhone }),
-                            });
-                            const data = await res.json();
-                            if (res.ok) {
-                              setFormData({
-                                ...formData,
-                                taygedoSendingCaptcha: false,
-                                taygedoCaptchaSent: true,
-                                taygedoCaptchaCooldown: 60,
-                              });
-                              toast.success('验证码已发送');
-                              // 60秒倒计时
-                              const interval = setInterval(() => {
-                                setFormData((prev) => {
-                                  const next = prev.taygedoCaptchaCooldown - 1;
-                                  if (next <= 0) {
-                                    clearInterval(interval);
-                                    return { ...prev, taygedoCaptchaCooldown: 0 };
-                                  }
-                                  return { ...prev, taygedoCaptchaCooldown: next };
-                                });
-                              }, 1000);
-                            } else {
-                              throw new Error(data.error || '发送失败');
-                            }
-                          } catch (error: any) {
-                            setFormData({ ...formData, taygedoSendingCaptcha: false });
-                            toast.error(error.message || '发送验证码失败');
-                          }
-                        }}
-                        className={`px-4 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                          formData.taygedoCaptchaCooldown > 0
-                            ? 'bg-muted text-text-quaternary cursor-not-allowed'
-                            : formData.taygedoSendingCaptcha
-                            ? 'bg-accent/50 text-accent-foreground cursor-wait'
-                            : 'bg-accent text-accent-foreground hover:bg-accent-hover'
-                        }`}
-                      >
-                        {formData.taygedoSendingCaptcha
-                          ? '发送中...'
-                          : formData.taygedoCaptchaCooldown > 0
-                          ? `${formData.taygedoCaptchaCooldown}s 后重发`
-                          : formData.taygedoCaptchaSent
-                          ? '重新发送'
-                          : '发送验证码'}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      短信验证码 <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required={!editingAccount}
-                      value={formData.taygedoCaptcha}
-                      onChange={(e) =>
-                        setFormData({ ...formData, taygedoCaptcha: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                      placeholder="输入短信验证码"
-                    />
-                  </div>
-                </>
-              )}
-
-            </>
-          )}
-
-          {/* 可选字段折叠区域 - 统一放在底部 */}
-          {(formData.platform === 'MIYOUSHE' || formData.platform === 'KUJIEQU' || (formData.platform === 'TAYGEDO' && formData.taygedoLoginMode === 'token')) && (
+          {/* 可选配置 */}
+          {((): boolean => {
+            if (!platformConfig?.renderOptional) return false;
+            const content = platformConfig.renderOptional({ formData, setFormData, editingAccount, toast });
+            return content !== null;
+          })() && platformConfig && (
             <div className="border border-border rounded-xl overflow-hidden">
               <button
                 type="button"
@@ -779,193 +327,9 @@ export default function AccountsPage() {
                   <ChevronDown className="h-4 w-4 text-text-tertiary" />
                 )}
               </button>
-
               {showOptional && (
                 <div className="p-4 space-y-4">
-                  {/* 米游社可选字段 */}
-                  {formData.platform === 'MIYOUSHE' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          Stoken
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.stoken}
-                          onChange={(e) =>
-                            setFormData({ ...formData, stoken: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder={editingAccount ? '留空则不修改' : '用于米游社任务（看帖/点赞/分享）'}
-                        />
-                        <HelpGuide platform="MIYOUSHE" field="stoken" />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          云原神 Token
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.cloudGenshinToken}
-                          onChange={(e) =>
-                            setFormData({ ...formData, cloudGenshinToken: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder="用于云原神签到（combo_token）"
-                        />
-                        <HelpGuide platform="MIYOUSHE" field="cloudGenshinToken" />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          云绝区零 Token
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.cloudZzzToken}
-                          onChange={(e) =>
-                            setFormData({ ...formData, cloudZzzToken: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder="用于云绝区零签到（combo_token，需手机抓包）"
-                        />
-                        <HelpGuide platform="MIYOUSHE" field="cloudZzzToken" />
-                      </div>
-                    </>
-                  )}
-
-                  {/* 库街区可选字段 */}
-                  {formData.platform === 'KUJIEQU' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          用户 ID
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.kuroUserId}
-                          onChange={(e) =>
-                            setFormData({ ...formData, kuroUserId: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder={formData.kuroUserId ? '' : '留空自动获取'}
-                        />
-                        {formData.kuroUserId && (
-                          <p className="text-xs text-success mt-1">✓ 已获取</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          鸣潮角色 ID
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.wwroleId}
-                          onChange={(e) =>
-                            setFormData({ ...formData, wwroleId: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder={formData.wwroleId ? '' : '留空自动获取'}
-                        />
-                        {formData.wwroleId && (
-                          <p className="text-xs text-success mt-1">✓ 已获取</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          战双角色 ID
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.pgrRoleId}
-                          onChange={(e) =>
-                            setFormData({ ...formData, pgrRoleId: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder={formData.pgrRoleId ? '' : '留空自动获取'}
-                        />
-                        {formData.pgrRoleId && (
-                          <p className="text-xs text-success mt-1">✓ 已获取</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          设备码
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.devcode}
-                          onChange={(e) =>
-                            setFormData({ ...formData, devcode: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder={formData.devcode ? '' : '留空自动生成'}
-                        />
-                        {formData.devcode && (
-                          <p className="text-xs text-accent mt-1">已保存</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          唯一标识
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.distinctId}
-                          onChange={(e) =>
-                            setFormData({ ...formData, distinctId: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder={formData.distinctId ? '' : '留空自动生成'}
-                        />
-                        {formData.distinctId && (
-                          <p className="text-xs text-accent mt-1">已保存</p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* 塔吉多可选字段 - 云游戏凭证 */}
-                  {formData.platform === 'TAYGEDO' && (
-                    <>
-                      <div className="pb-2 mb-2 border-b border-border">
-                        <p className="text-xs text-text-tertiary">以下为云异环时长签到所需，不填则跳过云游戏签到</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          老虎 Token
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.taygedoLaohuToken}
-                          onChange={(e) =>
-                            setFormData({ ...formData, taygedoLaohuToken: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder="用于云异环时长签到"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-2">
-                          老虎 User ID
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.taygedoLaohuUserId}
-                          onChange={(e) =>
-                            setFormData({ ...formData, taygedoLaohuUserId: e.target.value })
-                          }
-                          className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                          placeholder="用于云异环时长签到"
-                        />
-                      </div>
-                    </>
-                  )}
+                  {platformConfig?.renderOptional?.({ formData, setFormData, editingAccount, toast })}
                 </div>
               )}
             </div>
@@ -994,56 +358,6 @@ export default function AccountsPage() {
           </div>
         </form>
       </Modal>
-
-      {/* 库街区登录弹窗 */}
-      <KuroLoginModal
-        open={showKuroModal}
-        onClose={() => setShowKuroModal(false)}
-        onFill={(data) => {
-          setFormData((prev) => ({
-            ...prev,
-            kuroToken: data.token,
-            kuroUserId: data.userId,
-            devcode: data.devcode,
-            distinctId: data.distinctId,
-            wwroleId: data.roleId || '',
-          }));
-          setShowOptional(true);
-        }}
-      />
-
-      {/* 米游社手机号登录弹窗 */}
-      <MysLoginModal
-        open={showMysLoginModal}
-        onClose={() => setShowMysLoginModal(false)}
-        onFill={(data) => {
-          const cookie = `cookie_token=${data.cookieToken}; account_id=${data.accountId}; ltuid=${data.accountId}`;
-          setFormData((prev) => ({
-            ...prev,
-            cookie,
-            stoken: data.stoken,
-            uid: data.accountId,
-            mid: data.mid,
-          }));
-        }}
-      />
-
-      {/* 米游社扫码登录弹窗 */}
-      <MysQrLoginModal
-        open={showMysQrLoginModal}
-        onClose={() => setShowMysQrLoginModal(false)}
-        onFill={(data) => {
-          const parts = [`account_id=${data.accountId}`, `ltuid=${data.accountId}`];
-          if (data.cookieToken) parts.push(`cookie_token=${data.cookieToken}`);
-          setFormData((prev) => ({
-            ...prev,
-            cookie: parts.join('; '),
-            stoken: data.stoken,
-            uid: data.accountId,
-            mid: data.mid,
-          }));
-        }}
-      />
     </div>
   );
 }
