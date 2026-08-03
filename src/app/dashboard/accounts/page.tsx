@@ -55,12 +55,16 @@ export default function AccountsPage() {
     wwroleId: '',
     pgrRoleId: '',
     // 塔吉多字段
-    taygedoLoginMode: 'token' as 'token' | 'password',
+    taygedoLoginMode: 'token' as 'token' | 'password' | 'captcha',
     taygedoAccessToken: '',
     taygedoRefreshToken: '',
     taygedoDeviceId: '',
     taygedoPhone: '',
     taygedoPassword: '',
+    taygedoCaptcha: '',
+    taygedoSendingCaptcha: false,
+    taygedoCaptchaSent: false,
+    taygedoCaptchaCooldown: 0,
     taygedoHasPassword: false,
     taygedoLaohuToken: '',
     taygedoLaohuUserId: '',
@@ -159,6 +163,10 @@ export default function AccountsPage() {
           if (formData.taygedoPhone) extra.phone = formData.taygedoPhone;
           if (formData.taygedoPassword) extra.password = formData.taygedoPassword;
         }
+        if (formData.taygedoLoginMode === 'captcha') {
+          if (formData.taygedoPhone) extra.phone = formData.taygedoPhone;
+          if (formData.taygedoCaptcha) extra.captcha = formData.taygedoCaptcha;
+        }
         if (formData.taygedoLaohuToken) extra.laohuToken = formData.taygedoLaohuToken;
         if (formData.taygedoLaohuUserId) extra.laohuUserId = formData.taygedoLaohuUserId;
       }
@@ -198,6 +206,10 @@ export default function AccountsPage() {
           taygedoDeviceId: '',
           taygedoPhone: '',
           taygedoPassword: '',
+          taygedoCaptcha: '',
+          taygedoSendingCaptcha: false,
+          taygedoCaptchaSent: false,
+          taygedoCaptchaCooldown: 0,
           taygedoHasPassword: false,
           taygedoLaohuToken: '',
           taygedoLaohuUserId: '',
@@ -260,12 +272,16 @@ export default function AccountsPage() {
       wwroleId: extra.wwroleId || '',
       pgrRoleId: extra.pgrRoleId || '',
       // 塔吉多字段
-      taygedoLoginMode: (extra.taygedoLoginMode || 'token') as 'token' | 'password',
+      taygedoLoginMode: (extra.taygedoLoginMode || 'token') as 'token' | 'password' | 'captcha',
       taygedoAccessToken: '',
       taygedoRefreshToken: '',
       taygedoDeviceId: extra.deviceId || '',
       taygedoPhone: extra.phone || '',
       taygedoPassword: '',
+      taygedoCaptcha: '',
+      taygedoSendingCaptcha: false,
+      taygedoCaptchaSent: false,
+      taygedoCaptchaCooldown: 0,
       taygedoHasPassword: !!(extra as any)?.password || (!!extra.phone && extra.taygedoLoginMode === 'password'),
       taygedoLaohuToken: extra.laohuToken || '',
       taygedoLaohuUserId: extra.laohuUserId || '',
@@ -315,6 +331,10 @@ export default function AccountsPage() {
               taygedoDeviceId: '',
               taygedoPhone: '',
               taygedoPassword: '',
+              taygedoCaptcha: '',
+              taygedoSendingCaptcha: false,
+              taygedoCaptchaSent: false,
+              taygedoCaptchaCooldown: 0,
               taygedoHasPassword: false,
               taygedoLaohuToken: '',
               taygedoLaohuUserId: '',
@@ -558,6 +578,17 @@ export default function AccountsPage() {
                   >
                     手机号+密码
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, taygedoLoginMode: 'captcha' })}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                      formData.taygedoLoginMode === 'captcha'
+                        ? 'border-accent bg-accent/10 text-accent'
+                        : 'border-border text-text-secondary hover:border-accent/30'
+                    }`}
+                  >
+                    短信验证码
+                  </button>
                 </div>
               </div>
 
@@ -636,21 +667,100 @@ export default function AccountsPage() {
                 </>
               )}
 
-              {/* 通用可选 */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  设备 ID
-                </label>
-                <input
-                  type="text"
-                  value={formData.taygedoDeviceId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, taygedoDeviceId: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
-                  placeholder="留空自动生成"
-                />
-              </div>
+              {/* 短信验证码模式 */}
+              {formData.taygedoLoginMode === 'captcha' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
+                      手机号 <span className="text-destructive">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        required={!editingAccount}
+                        value={formData.taygedoPhone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, taygedoPhone: e.target.value, taygedoCaptchaSent: false })
+                        }
+                        className="flex-1 px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
+                        placeholder="塔吉多手机号"
+                      />
+                      <button
+                        type="button"
+                        disabled={!formData.taygedoPhone || formData.taygedoSendingCaptcha || formData.taygedoCaptchaCooldown > 0}
+                        onClick={async () => {
+                          if (!formData.taygedoPhone) return;
+                          setFormData({ ...formData, taygedoSendingCaptcha: true });
+                          try {
+                            const res = await fetch('/api/tools/taygedo-captcha', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ phone: formData.taygedoPhone }),
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              setFormData({
+                                ...formData,
+                                taygedoSendingCaptcha: false,
+                                taygedoCaptchaSent: true,
+                                taygedoCaptchaCooldown: 60,
+                              });
+                              toast.success('验证码已发送');
+                              // 60秒倒计时
+                              const interval = setInterval(() => {
+                                setFormData((prev) => {
+                                  const next = prev.taygedoCaptchaCooldown - 1;
+                                  if (next <= 0) {
+                                    clearInterval(interval);
+                                    return { ...prev, taygedoCaptchaCooldown: 0 };
+                                  }
+                                  return { ...prev, taygedoCaptchaCooldown: next };
+                                });
+                              }, 1000);
+                            } else {
+                              throw new Error(data.error || '发送失败');
+                            }
+                          } catch (error: any) {
+                            setFormData({ ...formData, taygedoSendingCaptcha: false });
+                            toast.error(error.message || '发送验证码失败');
+                          }
+                        }}
+                        className={`px-4 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                          formData.taygedoCaptchaCooldown > 0
+                            ? 'bg-muted text-text-quaternary cursor-not-allowed'
+                            : formData.taygedoSendingCaptcha
+                            ? 'bg-accent/50 text-accent-foreground cursor-wait'
+                            : 'bg-accent text-accent-foreground hover:bg-accent-hover'
+                        }`}
+                      >
+                        {formData.taygedoSendingCaptcha
+                          ? '发送中...'
+                          : formData.taygedoCaptchaCooldown > 0
+                          ? `${formData.taygedoCaptchaCooldown}s 后重发`
+                          : formData.taygedoCaptchaSent
+                          ? '重新发送'
+                          : '发送验证码'}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
+                      短信验证码 <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required={!editingAccount}
+                      value={formData.taygedoCaptcha}
+                      onChange={(e) =>
+                        setFormData({ ...formData, taygedoCaptcha: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary"
+                      placeholder="输入短信验证码"
+                    />
+                  </div>
+                </>
+              )}
+
             </>
           )}
 

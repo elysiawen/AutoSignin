@@ -6,13 +6,19 @@
 import crypto from 'crypto';
 
 export const TAYGEDO_BASE_URL = 'https://bbs-api.tajiduo.com';
-export const TAYGEDO_APP_VER = '1.2.2';
+export const TAYGEDO_APP_VER = '1.2.5';
 export const TAYGEDO_DS_SECRET = 'pUds3dfMkl';
 export const H5_ORIGIN = 'https://webstatic.tajiduo.com';
 
-const NATIVE_USER_AGENT = 'Tajiduo/1.2.2 (iPhone; iOS 17.0; Scale/3.00)';
+const NATIVE_USER_AGENT = 'okhttp/4.12.0';
 const H5_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Tajiduo/1.2.2';
 const NONCE_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+export interface MakeDsOptions {
+  timestamp?: number;
+  nonce?: string;
+  appVersion?: string;
+}
 
 export interface NativeRequestOptions {
   accessToken: string;
@@ -22,6 +28,8 @@ export interface NativeRequestOptions {
   path: string;
   query?: Record<string, string | number | undefined>;
   body?: Record<string, string | number | undefined>;
+  now?: () => Date;
+  nonce?: () => string;
 }
 
 export interface H5RequestOptions {
@@ -35,12 +43,13 @@ export interface H5RequestOptions {
 /**
  * 生成 DS 签名头
  */
-export function makeDs(): string {
-  const timestamp = Math.floor(Date.now() / 1000);
-  const nonce = makeNonce();
+export function makeDs(options: MakeDsOptions = {}): string {
+  const timestamp = options.timestamp ?? Math.floor(Date.now() / 1000);
+  const nonce = options.nonce ?? makeNonce();
+  const appVersion = options.appVersion ?? TAYGEDO_APP_VER;
   const signature = crypto
     .createHash('md5')
-    .update(`${timestamp}${nonce}${TAYGEDO_APP_VER}${TAYGEDO_DS_SECRET}`, 'utf8')
+    .update(`${timestamp}${nonce}${appVersion}${TAYGEDO_DS_SECRET}`, 'utf8')
     .digest('hex');
   return `${timestamp},${nonce},${signature}`;
 }
@@ -53,10 +62,13 @@ export function buildNativeRequest(options: NativeRequestOptions) {
     'Accept': 'application/json',
     'Authorization': options.accessToken,
     'appversion': TAYGEDO_APP_VER,
-    'platform': 'ios',
+    'platform': 'android',
     'uid': options.uid,
     'deviceid': options.deviceId,
-    'ds': makeDs(),
+    'ds': makeDs({
+      timestamp: Math.floor((options.now?.() ?? new Date()).getTime() / 1000),
+      nonce: options.nonce?.(),
+    }),
     'User-Agent': NATIVE_USER_AGENT,
   };
 
@@ -118,14 +130,25 @@ function formEncode(data: Record<string, string | number | undefined>): string {
   return params.toString();
 }
 
+export function nonceIndexFromByte(byte: number): number | undefined {
+  const fairRange = Math.floor(256 / NONCE_ALPHABET.length) * NONCE_ALPHABET.length;
+  if (byte >= fairRange) {
+    return undefined;
+  }
+  return byte % NONCE_ALPHABET.length;
+}
+
 function makeNonce(): string {
   let nonce = '';
   while (nonce.length < 8) {
     for (const byte of crypto.randomBytes(8)) {
-      const fairRange = Math.floor(256 / NONCE_ALPHABET.length) * NONCE_ALPHABET.length;
-      if (byte >= fairRange) continue;
-      nonce += NONCE_ALPHABET[byte % NONCE_ALPHABET.length];
-      if (nonce.length === 8) break;
+      const index = nonceIndexFromByte(byte);
+      if (index !== undefined) {
+        nonce += NONCE_ALPHABET[index];
+        if (nonce.length === 8) {
+          break;
+        }
+      }
     }
   }
   return nonce;

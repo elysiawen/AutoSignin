@@ -130,6 +130,10 @@ export async function POST(request: NextRequest) {
         if (!extra?.phone || !extra?.password) {
           return NextResponse.json({ error: '手机号和密码不能为空' }, { status: 400 });
         }
+      } else if (extra?.taygedoLoginMode === 'captcha') {
+        if (!extra?.phone || !extra?.captcha) {
+          return NextResponse.json({ error: '手机号和验证码不能为空' }, { status: 400 });
+        }
       } else {
         if (!stoken) {
           return NextResponse.json({ error: 'Refresh Token 不能为空' }, { status: 400 });
@@ -201,6 +205,31 @@ export async function POST(request: NextRequest) {
         };
       } catch (error: any) {
         return NextResponse.json({ error: '塔吉多登录失败，请检查手机号和密码' }, { status: 400 });
+      }
+    }
+
+    // 塔吉多短信验证码模式：自动登录获取 tokens
+    if (platform === 'TAYGEDO' && extra?.taygedoLoginMode === 'captcha' && extra?.phone && extra?.captcha) {
+      try {
+        const { createTaygedoClient, loginWithCaptcha, userCenterLogin } = await import('@/services/taygedo/api');
+        const { ensureTaygedoDevice } = await import('@/tools/device');
+        const device = await ensureTaygedoDevice(session.user.id!);
+
+        const client = createTaygedoClient();
+        const login = await loginWithCaptcha(client, extra.phone, extra.captcha, device.deviceId);
+        const ucLogin = await userCenterLogin(client, login.token, login.userId, device.deviceId);
+
+        encryptedCookie = encrypt(ucLogin.accessToken);
+        encryptedStoken = encrypt(ucLogin.refreshToken);
+        const { captcha: _, ...extraWithoutCaptcha } = finalExtra;
+        finalExtra = {
+          ...extraWithoutCaptcha,
+          laohuToken: login.token,
+          laohuUserId: login.userId,
+          taygedoLoginMode: 'captcha',
+        };
+      } catch (error: any) {
+        return NextResponse.json({ error: '塔吉多短信登录失败，请检查手机号和验证码' }, { status: 400 });
       }
     }
 

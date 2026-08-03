@@ -16,6 +16,7 @@ import {
   refreshToken as refreshTokenApi,
   appSignin,
   getGameRoles,
+  getGameRecordCards,
   gameSignin,
   getSigninState,
   getSigninRewards,
@@ -40,8 +41,7 @@ export interface TaygedoResult {
 
 /**
  * 获取或刷新 accessToken
- * 优先使用已有 accessToken，过期则用 refreshToken 刷新
- * 如果 refreshToken 也失效，用手机号+密码重新登录
+ * 策略与上游一致：优先密码登录重建 → refreshToken 刷新 → laohuToken 换取
  */
 async function ensureSession(
   account: Account,
@@ -50,18 +50,40 @@ async function ensureSession(
 ): Promise<{ accessToken: string; uid: string; updatedExtra: Record<string, any> }> {
   const client = createTaygedoClient();
 
-  // 1. 尝试使用现有 accessToken
+  // 1. 如果已有 accessToken，先探测是否有效
   if (extra.accessToken) {
     try {
-      // 简单测试 accessToken 是否有效
       await getGameRoles(client, extra.accessToken, extra.uid, deviceId, '1256');
       return { accessToken: extra.accessToken, uid: extra.uid, updatedExtra: extra };
     } catch {
-      log.info('accessToken 已失效，尝试刷新...');
+      log.info('accessToken 已失效，需要重建/刷新 session...');
     }
   }
 
-  // 2. 尝试用 refreshToken 刷新
+  // 2. 优先尝试用手机号+密码重新登录（与上游一致，密码登录最可靠）
+  if (extra.phone && extra.password) {
+    try {
+      log.info('使用手机号+密码重新登录...');
+      const login = await loginWithPassword(client, extra.phone, extra.password, deviceId);
+      const ucLogin = await userCenterLogin(client, login.token, login.userId, deviceId);
+      const { password: _, ...extraWithoutPassword } = extra;
+      const updatedExtra = {
+        ...extraWithoutPassword,
+        accessToken: ucLogin.accessToken,
+        refreshToken: ucLogin.refreshToken,
+        uid: ucLogin.uid,
+        laohuToken: login.token,
+        laohuUserId: login.userId,
+      };
+      await saveAccountExtra(account.id, updatedExtra);
+      log.info('重新登录成功');
+      return { accessToken: ucLogin.accessToken, uid: ucLogin.uid, updatedExtra };
+    } catch {
+      log.warn('密码登录失败，回退到 refreshToken...');
+    }
+  }
+
+  // 3. 尝试用 refreshToken 刷新
   if (extra.refreshToken) {
     try {
       const refreshed = await refreshTokenApi(client, extra.refreshToken, deviceId);
@@ -80,30 +102,6 @@ async function ensureSession(
       } else {
         log.error('刷新 token 失败', { error: error.message });
       }
-    }
-  }
-
-  // 3. 尝试用手机号+密码重新登录
-  if (extra.phone && extra.password) {
-    try {
-      log.info('使用手机号+密码重新登录...');
-      const login = await loginWithPassword(client, extra.phone, extra.password, deviceId);
-      const ucLogin = await userCenterLogin(client, login.token, login.userId, deviceId);
-      const { password: _, ...extraWithoutPassword } = extra;
-      const updatedExtra = {
-        ...extraWithoutPassword,
-        accessToken: ucLogin.accessToken,
-        refreshToken: ucLogin.refreshToken,
-        uid: ucLogin.uid,
-        laohuToken: login.token,
-        laohuUserId: login.userId,
-      };
-      await saveAccountExtra(account.id, updatedExtra);
-      log.info('重新登录成功');
-      return { accessToken: ucLogin.accessToken, uid: ucLogin.uid, updatedExtra };
-    } catch (error: any) {
-      log.error('密码登录失败', { error: error.message });
-      throw new Error(`登录失败: ${error.message}`);
     }
   }
 
@@ -158,6 +156,7 @@ function isAuthError(error: unknown): boolean {
 
 /**
  * 执行 APP 社区签到
+ * 支持认证错误自动恢复：签到失败时如果检测到认证错误，自动重建 session 后重试
  */
 export async function executeTaygedoSignin(account: Account): Promise<TaygedoResult> {
   log.info('执行塔吉多 APP 社区签到');
@@ -165,8 +164,9 @@ export async function executeTaygedoSignin(account: Account): Promise<TaygedoRes
   const extra = (account.extra as any) || {};
   const device = await ensureTaygedoDevice(account.userId);
 
-  const { accessToken, uid, updatedExtra } = await ensureSession(account, extra, device.deviceId);
+  let { accessToken, uid, updatedExtra } = await ensureSession(account, extra, device.deviceId);
   const client = createTaygedoClient();
+  let currentExtra = updatedExtra;
 
   try {
     const result = await appSignin(client, accessToken, uid, device.deviceId);
@@ -179,12 +179,83 @@ export async function executeTaygedoSignin(account: Account): Promise<TaygedoRes
     if (isAlreadySignedError(error)) {
       return { success: true, message: '今日已签到' };
     }
+    // 认证错误时自动重建 session 并重试一次
+    if (isAuthError(error)) {
+      log.info('检测到认证错误，尝试重建 session 后重试...');
+      try {
+        const rebuilt = await ensureSession(account, currentExtra, device.deviceId);
+        accessToken = rebuilt.accessToken;
+        uid = rebuilt.uid;
+        currentExtra = rebuilt.updatedExtra;
+        const retryClient = createTaygedoClient();
+        const result = await appSignin(retryClient, accessToken, uid, device.deviceId);
+        return {
+          success: true,
+          message: `签到成功（重试），获得 ${result.goldCoin} 金币，${result.exp} 经验`,
+          reward: `金币+${result.goldCoin} 经验+${result.exp}`,
+        };
+      } catch (retryError: any) {
+        if (isAlreadySignedError(retryError)) {
+          return { success: true, message: '今日已签到' };
+        }
+        throw retryError;
+      }
+    }
     throw error;
   }
 }
 
 /**
+ * 获取所有游戏角色（含 getGameRecordCards 后备）
+ */
+async function getAllGameRoles(
+  client: ReturnType<typeof createTaygedoClient>,
+  accessToken: string,
+  uid: string,
+  deviceId: string,
+): Promise<Array<{ gameId: string; roleId: string; roleName?: string }>> {
+  const roles: Array<{ gameId: string; roleId: string; roleName?: string }> = [];
+  const seenRoleIds = new Set<string>();
+
+  // 先尝试各游戏的 getGameRoles
+  for (const gameId of TAYGEDO_GAME_IDS) {
+    try {
+      const gameRoles = await getGameRoles(client, accessToken, uid, deviceId, gameId);
+      for (const role of gameRoles) {
+        if (!role.roleId || seenRoleIds.has(role.roleId)) continue;
+        seenRoleIds.add(role.roleId);
+        roles.push({ gameId, roleId: role.roleId, roleName: role.roleName });
+      }
+    } catch {
+      log.warn(`获取游戏 ${gameId} 角色失败`);
+    }
+  }
+
+  // 如果 getGameRoles 全部返回空，回退到 getGameRecordCards
+  if (roles.length === 0) {
+    log.info('getGameRoles 返回空，尝试 getGameRecordCards...');
+    try {
+      const cards = await getGameRecordCards(client, accessToken, uid, deviceId);
+      for (const card of cards) {
+        if (!card.roleId || seenRoleIds.has(card.roleId)) continue;
+        seenRoleIds.add(card.roleId);
+        roles.push({
+          gameId: card.gameId,
+          roleId: card.roleId,
+          roleName: card.roleName ?? card.gameName,
+        });
+      }
+    } catch {
+      log.warn('getGameRecordCards 也失败了');
+    }
+  }
+
+  return roles;
+}
+
+/**
  * 执行游戏签到（自动签所有绑定的游戏）
+ * 支持认证错误自动恢复和 getGameRecordCards 后备
  */
 export async function executeTaygedoGameSignin(account: Account): Promise<TaygedoResult> {
   log.info('执行塔吉多游戏签到');
@@ -192,65 +263,77 @@ export async function executeTaygedoGameSignin(account: Account): Promise<Tayged
   const extra = (account.extra as any) || {};
   const device = await ensureTaygedoDevice(account.userId);
 
-  const { accessToken, uid, updatedExtra } = await ensureSession(account, extra, device.deviceId);
-  const client = createTaygedoClient();
-  const results: string[] = [];
+  let { accessToken, uid, updatedExtra } = await ensureSession(account, extra, device.deviceId);
+  let client = createTaygedoClient();
+  let currentExtra = updatedExtra;
+  let retried = false;
 
-  // 获取所有游戏的角色
-  for (const gameId of TAYGEDO_GAME_IDS) {
-    try {
-      const roles = await getGameRoles(client, accessToken, uid, device.deviceId, gameId);
-      if (roles.length === 0) {
-        log.info(`游戏 ${gameId} 无绑定角色，跳过`);
-        continue;
-      }
+  const doSignin = async (): Promise<TaygedoResult> => {
+    const results: string[] = [];
+    const roles = await getAllGameRoles(client, accessToken, uid, device.deviceId);
 
-      for (const role of roles) {
-        try {
-          await gameSignin(client, accessToken, role.roleId, gameId);
-          const state = await getSigninState(client, accessToken, gameId);
-          const rewards = await getSigninRewards(client, accessToken, gameId);
-          const reward = rewards[state.days - 1];
-          const rewardStr = reward ? `，奖励「${reward.name}」x${reward.num}` : '';
-          results.push(`游戏${gameId}/${role.roleName || role.roleId}: 签到成功，第${state.days}天${rewardStr}`);
-        } catch (error: any) {
-          if (isAlreadySignedError(error)) {
-            results.push(`游戏${gameId}/${role.roleName || role.roleId}: 今日已签到`);
-          } else {
-            results.push(`游戏${gameId}/${role.roleName || role.roleId}: ${error.message}`);
-          }
-        }
-        await sleep(randomInt(1, 3) * 1000);
-      }
-    } catch (error: any) {
-      log.error(`获取游戏 ${gameId} 角色失败`, { error: error.message });
-      results.push(`游戏${gameId}: 获取角色失败 - ${error.message}`);
+    if (roles.length === 0) {
+      return { success: true, message: '无绑定游戏角色' };
     }
-  }
 
-  if (results.length === 0) {
-    return { success: true, message: '无绑定游戏角色' };
-  }
+    for (const role of roles) {
+      try {
+        await gameSignin(client, accessToken, role.roleId, role.gameId);
+        const state = await getSigninState(client, accessToken, role.gameId);
+        const rewards = await getSigninRewards(client, accessToken, role.gameId);
+        const reward = rewards[state.days - 1];
+        const rewardStr = reward ? `，奖励「${reward.name}」x${reward.num}` : '';
+        results.push(`游戏${role.gameId}/${role.roleName || role.roleId}: 签到成功，第${state.days}天${rewardStr}`);
+      } catch (error: any) {
+        if (isAlreadySignedError(error)) {
+          results.push(`游戏${role.gameId}/${role.roleName || role.roleId}: 今日已签到`);
+        } else if (!retried && isAuthError(error)) {
+          // 认证错误，触发重试
+          throw error;
+        } else {
+          results.push(`游戏${role.gameId}/${role.roleName || role.roleId}: ${error.message}`);
+        }
+      }
+      await sleep(randomInt(1, 3) * 1000);
+    }
 
-  // 提取奖励信息
-  const rewardParts = results
-    .filter(r => r.includes('奖励「'))
-    .map(r => {
-      const match = r.match(/奖励「(.+?)」x(\d+)/);
-      return match ? `${match[1]}x${match[2]}` : '';
-    })
-    .filter(Boolean);
+    // 提取奖励信息
+    const rewardParts = results
+      .filter(r => r.includes('奖励「'))
+      .map(r => {
+        const match = r.match(/奖励「(.+?)」x(\d+)/);
+        return match ? `${match[1]}x${match[2]}` : '';
+      })
+      .filter(Boolean);
 
-  const allSuccess = results.every(r => r.includes('签到成功') || r.includes('已签到'));
-  return {
-    success: allSuccess,
-    message: results.join('\n'),
-    reward: rewardParts.length > 0 ? rewardParts.join('、') : undefined,
+    const allSuccess = results.every(r => r.includes('签到成功') || r.includes('已签到'));
+    return {
+      success: allSuccess,
+      message: results.join('\n'),
+      reward: rewardParts.length > 0 ? rewardParts.join('、') : undefined,
+    };
   };
+
+  try {
+    return await doSignin();
+  } catch (error: any) {
+    if (isAuthError(error) && !retried) {
+      log.info('检测到认证错误，尝试重建 session 后重试游戏签到...');
+      retried = true;
+      const rebuilt = await ensureSession(account, currentExtra, device.deviceId);
+      accessToken = rebuilt.accessToken;
+      uid = rebuilt.uid;
+      currentExtra = rebuilt.updatedExtra;
+      client = createTaygedoClient();
+      return await doSignin();
+    }
+    throw error;
+  }
 }
 
 /**
  * 执行金币任务（BBS签到+浏览+点赞+分享）
+ * 支持认证错误自动恢复
  */
 export async function executeTaygedoCoins(account: Account): Promise<TaygedoResult> {
   log.info('执行塔吉多金币任务');
@@ -258,109 +341,133 @@ export async function executeTaygedoCoins(account: Account): Promise<TaygedoResu
   const extra = (account.extra as any) || {};
   const device = await ensureTaygedoDevice(account.userId);
 
-  const { accessToken, uid } = await ensureSession(account, extra, device.deviceId);
-  const client = createTaygedoClient();
-  const messages: string[] = [];
-  const errors: string[] = [];
+  let { accessToken, uid } = await ensureSession(account, extra, device.deviceId);
+  let client = createTaygedoClient();
+  let retried = false;
 
-  // 获取任务状态
-  const tasks = await getUserTasks(client, accessToken, uid, device.deviceId);
-  const remaining = (code: string, fallback: number) => {
-    const task = tasks.find(t => t.code === code);
-    return task ? Math.max(0, task.limitTimes - task.completeTimes) : fallback;
-  };
+  const doCoins = async (): Promise<TaygedoResult> => {
+    const messages: string[] = [];
+    const errors: string[] = [];
 
-  const bbsTarget = remaining('signin_c', 1);
-  const browseTarget = remaining('browse_post_c', 5);
-  const likeTarget = remaining('like_post_c', 5);
-  const shareTarget = remaining('share', 1);
+    // 获取任务状态
+    const tasks = await getUserTasks(client, accessToken, uid, device.deviceId);
+    const remaining = (code: string, fallback: number) => {
+      const task = tasks.find(t => t.code === code);
+      return task ? Math.max(0, task.limitTimes - task.completeTimes) : fallback;
+    };
 
-  // BBS 签到
-  if (bbsTarget > 0) {
-    try {
-      await bbsSignin(client, accessToken, uid, device.deviceId);
-      messages.push('BBS签到: 成功');
-    } catch (error: any) {
-      if (isAlreadySignedError(error)) {
-        messages.push('BBS签到: 已签到');
-      } else {
-        errors.push(`BBS签到: ${error.message}`);
-      }
-    }
-  }
+    const bbsTarget = remaining('signin_c', 1);
+    const browseTarget = remaining('browse_post_c', 5);
+    const likeTarget = remaining('like_post_c', 5);
+    const shareTarget = remaining('share', 1);
 
-  // 获取帖子列表
-  const posts = (browseTarget > 0 || likeTarget > 0 || shareTarget > 0)
-    ? await getRecommendPosts(client, accessToken, uid, device.deviceId, 20)
-    : [];
-
-  const browsedPosts: typeof posts = [];
-
-  // 浏览帖子
-  for (const post of posts) {
-    if (browsedPosts.length >= browseTarget) break;
-    await sleep(randomInt(500, 1500));
-    try {
-      const fullPost = await getPostFull(client, accessToken, uid, device.deviceId, post.postId);
-      browsedPosts.push(fullPost);
-    } catch (error: any) {
-      errors.push(`浏览帖子 ${post.postId}: ${error.message}`);
-    }
-  }
-  if (browseTarget > 0) {
-    messages.push(`浏览帖子: ${browsedPosts.length}/${browseTarget}`);
-  }
-
-  // 点赞帖子
-  let likeCount = 0;
-  const likeCandidates = [...browsedPosts, ...posts];
-  const seenPostIds = new Set<string>();
-  for (const post of likeCandidates) {
-    if (likeCount >= likeTarget) break;
-    if (seenPostIds.has(post.postId)) continue;
-    seenPostIds.add(post.postId);
-    if (post.selfOperation?.liked) continue;
-
-    await sleep(randomInt(500, 1000));
-    try {
-      await likePost(client, accessToken, uid, device.deviceId, post.postId);
-      likeCount++;
-    } catch (error: any) {
-      errors.push(`点赞 ${post.postId}: ${error.message}`);
-    }
-  }
-  if (likeTarget > 0) {
-    messages.push(`点赞: ${likeCount}/${likeTarget}`);
-  }
-
-  // 分享帖子
-  if (shareTarget > 0) {
-    const sharePostItem = browsedPosts[0] ?? posts[0];
-    if (sharePostItem) {
+    // BBS 签到
+    if (bbsTarget > 0) {
       try {
-        await sharePost(client, accessToken, uid, device.deviceId, sharePostItem.postId);
-        messages.push('分享: 成功');
+        await bbsSignin(client, accessToken, uid, device.deviceId);
+        messages.push('BBS签到: 成功');
       } catch (error: any) {
-        errors.push(`分享: ${error.message}`);
+        if (isAlreadySignedError(error)) {
+          messages.push('BBS签到: 已签到');
+        } else if (!retried && isAuthError(error)) {
+          throw error;
+        } else {
+          errors.push(`BBS签到: ${error.message}`);
+        }
       }
     }
-  }
 
-  // 获取金币状态
-  const coinState = await getUserCoinTaskState(client, accessToken);
-  if (coinState.todayCoin !== undefined) {
-    messages.push(`今日金币: ${coinState.todayCoin}/${coinState.limitCoin ?? '?'}`);
-  }
+    // 获取帖子列表
+    const posts = (browseTarget > 0 || likeTarget > 0 || shareTarget > 0)
+      ? await getRecommendPosts(client, accessToken, uid, device.deviceId, 20)
+      : [];
 
-  if (errors.length > 0) {
-    messages.push(`错误: ${errors.join('；')}`);
-  }
+    const browsedPosts: typeof posts = [];
 
-  return {
-    success: errors.length === 0,
-    message: messages.join('\n'),
-    reward: coinState.todayCoin !== undefined ? `金币 ${coinState.todayCoin}/${coinState.limitCoin ?? '?'}` : undefined,
+    // 浏览帖子
+    for (const post of posts) {
+      if (browsedPosts.length >= browseTarget) break;
+      await sleep(randomInt(500, 1500));
+      try {
+        const fullPost = await getPostFull(client, accessToken, uid, device.deviceId, post.postId);
+        browsedPosts.push(fullPost);
+      } catch (error: any) {
+        if (!retried && isAuthError(error)) throw error;
+        errors.push(`浏览帖子 ${post.postId}: ${error.message}`);
+      }
+    }
+    if (browseTarget > 0) {
+      messages.push(`浏览帖子: ${browsedPosts.length}/${browseTarget}`);
+    }
+
+    // 点赞帖子
+    let likeCount = 0;
+    const likeCandidates = [...browsedPosts, ...posts];
+    const seenPostIds = new Set<string>();
+    for (const post of likeCandidates) {
+      if (likeCount >= likeTarget) break;
+      if (seenPostIds.has(post.postId)) continue;
+      seenPostIds.add(post.postId);
+      if (post.selfOperation?.liked) continue;
+
+      await sleep(randomInt(500, 1000));
+      try {
+        await likePost(client, accessToken, uid, device.deviceId, post.postId);
+        likeCount++;
+      } catch (error: any) {
+        if (!retried && isAuthError(error)) throw error;
+        errors.push(`点赞 ${post.postId}: ${error.message}`);
+      }
+    }
+    if (likeTarget > 0) {
+      messages.push(`点赞: ${likeCount}/${likeTarget}`);
+    }
+
+    // 分享帖子
+    if (shareTarget > 0) {
+      const sharePostItem = browsedPosts[0] ?? posts[0];
+      if (sharePostItem) {
+        try {
+          await sharePost(client, accessToken, uid, device.deviceId, sharePostItem.postId);
+          messages.push('分享: 成功');
+        } catch (error: any) {
+          if (!retried && isAuthError(error)) throw error;
+          errors.push(`分享: ${error.message}`);
+        }
+      }
+    }
+
+    // 获取金币状态
+    const coinState = await getUserCoinTaskState(client, accessToken);
+    if (coinState.todayCoin !== undefined) {
+      messages.push(`今日金币: ${coinState.todayCoin}/${coinState.limitCoin ?? '?'}`);
+    }
+
+    if (errors.length > 0) {
+      messages.push(`错误: ${errors.join('；')}`);
+    }
+
+    return {
+      success: errors.length === 0,
+      message: messages.join('\n'),
+      reward: coinState.todayCoin !== undefined ? `金币 ${coinState.todayCoin}/${coinState.limitCoin ?? '?'}` : undefined,
+    };
   };
+
+  try {
+    return await doCoins();
+  } catch (error: any) {
+    if (isAuthError(error) && !retried) {
+      log.info('检测到认证错误，尝试重建 session 后重试金币任务...');
+      retried = true;
+      const rebuilt = await ensureSession(account, extra, device.deviceId);
+      accessToken = rebuilt.accessToken;
+      uid = rebuilt.uid;
+      client = createTaygedoClient();
+      return await doCoins();
+    }
+    throw error;
+  }
 }
 
 /**
