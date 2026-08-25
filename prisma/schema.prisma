@@ -12,18 +12,41 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  password  String
+  password  String?
   name      String?
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   accounts             Account[]
+  oauthAccounts        OAuthAccount[]
   devices              Device[]
   tasks                Task[]
   logs                 TaskLog[]
   notificationChannels NotificationChannel[]
   notificationBindings NotificationBinding[]
+}
+
+// ==================== 通行证（OAuth/OIDC）登录关联 ====================
+
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 enum Role {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { Gamepad2, Loader2 } from 'lucide-react';
+import { Gamepad2, Loader2, KeyRound } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
@@ -15,11 +15,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
+  // 密码登录入口默认隐藏，仅保留备用入口
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
 
   const inputStyle = (field: string) => ({
     borderColor: focused === field ? 'var(--accent)' : 'var(--border)',
     boxShadow: focused === field ? '0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent)' : 'none',
   });
+
+  const handlePassportLogin = async () => {
+    setLoading(true);
+    try {
+      await signIn('passport', { redirect: true, callbackUrl: '/dashboard' });
+    } catch {
+      showError('登录失败，请稍后重试');
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,63 +107,93 @@ export default function LoginPage() {
           <div className="bg-card/80 dark:bg-card/60 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-lg shadow-black/[0.04] dark:shadow-black/20">
             <div className="mb-7">
               <h2 className="text-xl font-medium text-text-primary mb-1">登录</h2>
-              <p className="text-sm text-text-tertiary">登录您的账号开始使用</p>
+              <p className="text-sm text-text-tertiary">使用通行证登录您的账号</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-xs font-medium text-text-tertiary mb-2 tracking-wide uppercase">邮箱</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setFocused('email')}
-                  onBlur={() => setFocused(null)}
-                  className="w-full px-4 py-2.5 bg-background border rounded-lg text-sm text-text-primary placeholder:text-text-quaternary outline-none transition-all duration-200"
-                  style={inputStyle('email')}
-                  placeholder="your@email.com"
-                  disabled={loading}
-                  autoComplete="email"
-                />
-              </div>
+            {/* 通行证登录（默认主入口） */}
+            <button
+              type="button"
+              onClick={handlePassportLogin}
+              disabled={loading}
+              className="w-full py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <KeyRound className="h-4 w-4" />
+              )}
+              {loading ? '跳转中...' : '使用通行证登录'}
+            </button>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-medium text-text-tertiary tracking-wide uppercase">密码</label>
-                  <Link href="/auth/forgot-password" className="text-xs text-text-tertiary hover:text-accent transition-colors">
-                    忘记密码?
-                  </Link>
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setFocused('password')}
-                  onBlur={() => setFocused(null)}
-                  className="w-full px-4 py-2.5 bg-background border rounded-lg text-sm text-text-primary placeholder:text-text-quaternary outline-none transition-all duration-200"
-                  style={inputStyle('password')}
-                  placeholder="••••••••"
-                  disabled={loading}
-                  autoComplete="current-password"
-                />
-              </div>
-
+            {/* 密码登录备用入口（默认折叠） */}
+            <div className="mt-6">
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                type="button"
+                onClick={() => setShowPasswordLogin((v) => !v)}
+                className="w-full text-center text-xs text-text-tertiary hover:text-accent transition-colors"
               >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? '登录中...' : '登录'}
+                {showPasswordLogin ? '收起账号密码登录' : '使用账号密码登录'}
               </button>
-            </form>
+            </div>
 
-            <p className="text-center text-sm text-text-tertiary mt-7">
-              还没有账号？{' '}
-              <Link href="/auth/register" className="text-accent hover:text-accent-hover transition-colors font-medium">
-                立即注册
-              </Link>
-            </p>
+            {showPasswordLogin && (
+              <form onSubmit={handleSubmit} className="space-y-5 mt-5">
+                <div>
+                  <label className="block text-xs font-medium text-text-tertiary mb-2 tracking-wide uppercase">邮箱</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onFocus={() => setFocused('email')}
+                    onBlur={() => setFocused(null)}
+                    className="w-full px-4 py-2.5 bg-background border rounded-lg text-sm text-text-primary placeholder:text-text-quaternary outline-none transition-all duration-200"
+                    style={inputStyle('email')}
+                    placeholder="your@email.com"
+                    disabled={loading}
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-medium text-text-tertiary tracking-wide uppercase">密码</label>
+                    <Link href="/auth/forgot-password" className="text-xs text-text-tertiary hover:text-accent transition-colors">
+                      忘记密码?
+                    </Link>
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused(null)}
+                    className="w-full px-4 py-2.5 bg-background border rounded-lg text-sm text-text-primary placeholder:text-text-quaternary outline-none transition-all duration-200"
+                    style={inputStyle('password')}
+                    placeholder="••••••••"
+                    disabled={loading}
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 bg-accent text-white rounded-lg font-medium text-sm hover:bg-accent-hover transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {loading ? '登录中...' : '登录'}
+                </button>
+              </form>
+            )}
+
+            {showPasswordLogin && (
+              <p className="text-center text-sm text-text-tertiary mt-7">
+                还没有账号？{' '}
+                <Link href="/auth/register" className="text-accent hover:text-accent-hover transition-colors font-medium">
+                  立即注册
+                </Link>
+              </p>
+            )}
           </div>
         </div>
       </div>

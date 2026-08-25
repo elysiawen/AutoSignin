@@ -40,6 +40,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: '用户不存在' }, { status: 404 });
     }
 
+    // OAuth 用户无密码，无法修改
+    if (!user.password) {
+      return NextResponse.json(
+        { error: '当前账号使用通行证登录，无需修改密码' },
+        { status: 400 }
+      );
+    }
+
     // 验证当前密码
     const isPasswordValid = await verifyPassword(currentPassword, user.password);
     if (!isPasswordValid) {
