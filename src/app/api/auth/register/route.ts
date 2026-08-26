@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { hashPassword } from '@/lib/utils';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { resolveAuthFlags } from '@/lib/auth-config';
 
 export async function POST(request: NextRequest) {
   try {
+    // 账号密码登录开关：关闭时不允许注册（密码注册属于账号密码体系）
+    const { password: passwordEnabled } = resolveAuthFlags();
+    if (!passwordEnabled) {
+      return NextResponse.json({ error: '当前未开放账号注册' }, { status: 403 });
+    }
+
     // 检查是否开放注册
     const setting = await prisma.setting.findUnique({ where: { key: 'registration_enabled' } });
     if (setting && setting.value !== 'true') {

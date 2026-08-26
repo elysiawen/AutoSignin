@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getSchedulerStatus, executeAllTasks } from '@/lib/scheduler';
 import { isSmtpConfigured } from '@/lib/email';
+import { resolveAuthFlags } from '@/lib/auth-config';
 
 export async function GET() {
   try {
@@ -20,7 +21,14 @@ export async function GET() {
 
     const scheduler = await getSchedulerStatus();
 
-    return NextResponse.json({ settings, scheduler, smtpConfigured: isSmtpConfigured() });
+    const { password: passwordEnabled } = resolveAuthFlags();
+
+    return NextResponse.json({
+      settings,
+      scheduler,
+      smtpConfigured: isSmtpConfigured(),
+      passwordEnabled,
+    });
   } catch (error) {
     console.error('Admin get settings error:', error);
     return NextResponse.json({ error: '获取设置失败' }, { status: 500 });

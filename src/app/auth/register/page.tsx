@@ -21,13 +21,18 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0);
   const [sendingCode, setSendingCode] = useState(false);
   const [needVerification, setNeedVerification] = useState(true);
+  // 账号密码注册开关（来自服务端 settings）
+  const [passwordEnabled, setPasswordEnabled] = useState(true);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/settings')
       .then((res) => res.json())
-      .then((data) => setNeedVerification(data.emailVerification))
+      .then((data) => {
+        setNeedVerification(data.emailVerification);
+        setPasswordEnabled(data.passwordEnabled !== false);
+      })
       .catch(() => setNeedVerification(true));
   }, []);
 
@@ -170,6 +175,17 @@ export default function RegisterPage() {
               <p className="text-sm text-text-tertiary">创建新账号开始使用</p>
             </div>
 
+            {!passwordEnabled && (
+              <div className="text-center py-6">
+                <p className="text-sm text-text-tertiary mb-6">当前仅支持通行证登录，暂未开放账号注册。</p>
+                <Link href="/auth/login" className="text-accent hover:text-accent-hover transition-colors font-medium">
+                  返回登录
+                </Link>
+              </div>
+            )}
+
+            {passwordEnabled && (
+            <>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-text-tertiary mb-2 tracking-wide uppercase">
@@ -324,6 +340,8 @@ export default function RegisterPage() {
                 立即登录
               </Link>
             </p>
+            </>
+            )}
           </div>
         </div>
       </div>

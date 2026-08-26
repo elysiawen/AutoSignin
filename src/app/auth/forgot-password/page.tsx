@@ -19,8 +19,17 @@ export default function ForgotPasswordPage() {
   const [sendingCode, setSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
+  // 账号密码开关（来自服务端 settings）
+  const [passwordEnabled, setPasswordEnabled] = useState(true);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/settings')
+      .then((res) => res.json())
+      .then((data) => setPasswordEnabled(data.passwordEnabled !== false))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -118,6 +127,15 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className="bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-8 shadow-lg">
+          {!passwordEnabled && (
+            <div className="text-center py-6">
+              <p className="text-sm text-text-tertiary mb-6">当前仅支持通行证登录，暂未开放账号密码。</p>
+              <Link href="/auth/login" className="text-accent hover:text-accent-hover transition-colors font-medium">
+                返回登录
+              </Link>
+            </div>
+          )}
+
           {step === 'email' ? (
             <>
               <div className="space-y-5">

@@ -6,11 +6,17 @@ import { withErrorHandling, ApiError } from '@/lib/api-error-handler';
 import { sendVerificationEmail } from '@/lib/email';
 import { cleanupVerificationCodes } from '@/lib/cleanup-verification-codes';
 import { createLogger } from '@/lib/logger';
+import { resolveAuthFlags } from '@/lib/auth-config';
 
 const log = createLogger('ForgotPassword');
 
 // 发送验证码
 export const POST = withErrorHandling(async (request: NextRequest) => {
+  const { password: passwordEnabled } = resolveAuthFlags();
+  if (!passwordEnabled) {
+    throw new ApiError('当前未开放账号密码，无需重置');
+  }
+
   const { email } = await request.json();
 
   if (!email || typeof email !== 'string') {
@@ -98,6 +104,11 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
 // 验证验证码并重置密码
 export const PUT = withErrorHandling(async (request: NextRequest) => {
+  const { password: passwordEnabled } = resolveAuthFlags();
+  if (!passwordEnabled) {
+    throw new ApiError('当前未开放账号密码，无需重置');
+  }
+
   const { email, code, password } = await request.json();
 
   if (!email || !code || !password) {

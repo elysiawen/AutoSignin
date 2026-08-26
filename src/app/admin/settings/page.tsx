@@ -32,6 +32,8 @@ export default function AdminSettingsPage() {
   const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(true);
   const [togglingEmailVerification, setTogglingEmailVerification] = useState(false);
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  // 账号密码登录是否可用（关闭时隐藏注册/邮箱验证相关配置）
+  const [passwordEnabled, setPasswordEnabled] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -52,6 +54,8 @@ export default function AdminSettingsPage() {
         setEmailVerificationEnabled(!emailVerSetting || emailVerSetting.value === 'true');
         // 读取 SMTP 配置状态
         setSmtpConfigured(data.smtpConfigured || false);
+        // 读取账号密码登录开关（关闭时隐藏注册/邮箱验证配置）
+        setPasswordEnabled(data.passwordEnabled !== false);
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
@@ -264,7 +268,8 @@ export default function AdminSettingsPage() {
         </button>
       </div>
 
-      {/* Registration Toggle */}
+      {/* Registration Toggle（仅账号密码体系，密码登录关闭时隐藏） */}
+      {passwordEnabled && (
       <div className="bg-card rounded-2xl border border-border p-6 mb-6 animate-slide-in-up">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -291,8 +296,10 @@ export default function AdminSettingsPage() {
           </button>
         </div>
       </div>
+      )}
 
-      {/* Email Verification Toggle */}
+      {/* Email Verification Toggle（仅账号密码体系，密码登录关闭时隐藏） */}
+      {passwordEnabled && (
       <div className={`bg-card rounded-2xl border p-6 mb-6 animate-slide-in-up ${emailVerificationEnabled && !smtpConfigured ? 'border-destructive/50 bg-destructive/5' : 'border-border'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -325,6 +332,7 @@ export default function AdminSettingsPage() {
           </button>
         </div>
       </div>
+      )}
 
       {/* System Status */}
       <div className="mb-6">
