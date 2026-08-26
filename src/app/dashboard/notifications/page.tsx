@@ -68,6 +68,7 @@ export default function NotificationsPage() {
     webhookUrl: '',
     feishuWebhook: '',
     dingtalkWebhook: '',
+    dingtalkSecret: '',
     emailAddr: '',
     chatId: '',
     events: ['FAILED', 'CAPTCHA'] as string[],
@@ -105,7 +106,7 @@ export default function NotificationsPage() {
   };
 
   const resetForm = () => {
-    setForm({ channelId: '', targetType: 'private', targetId: '', webhookUrl: '', feishuWebhook: '', dingtalkWebhook: '', emailAddr: '', chatId: '', events: ['FAILED', 'CAPTCHA'], sources: ['AUTO', 'MANUAL'] });
+    setForm({ channelId: '', targetType: 'private', targetId: '', webhookUrl: '', feishuWebhook: '', dingtalkWebhook: '', dingtalkSecret: '', emailAddr: '', chatId: '', events: ['FAILED', 'CAPTCHA'], sources: ['AUTO', 'MANUAL'] });
     setEditingBinding(null);
   };
 
@@ -121,6 +122,7 @@ export default function NotificationsPage() {
       webhookUrl: target.webhookUrl || '',
       feishuWebhook: target.webhookUrl || '',
       dingtalkWebhook: target.webhookUrl || '',
+      dingtalkSecret: target.secret || '',
       emailAddr: target.email || '',
       chatId: target.chatId || '',
       events: [...binding.events],
@@ -135,7 +137,12 @@ export default function NotificationsPage() {
     if (selectedChannel.provider === 'DISCORD') return form.webhookUrl ? { webhookUrl: form.webhookUrl } : null;
     if (selectedChannel.provider === 'ONEBOT') return form.targetId ? { targetType: form.targetType, targetId: form.targetId } : null;
     if (selectedChannel.provider === 'FEISHU') return form.feishuWebhook ? { webhookUrl: form.feishuWebhook } : null;
-    if (selectedChannel.provider === 'DINGTALK') return form.dingtalkWebhook ? { webhookUrl: form.dingtalkWebhook } : null;
+    if (selectedChannel.provider === 'DINGTALK') {
+      if (!form.dingtalkWebhook) return null;
+      const t: Record<string, any> = { webhookUrl: form.dingtalkWebhook };
+      if (form.dingtalkSecret) t.secret = form.dingtalkSecret;
+      return t;
+    }
     if (selectedChannel.provider === 'EMAIL') return form.emailAddr ? { email: form.emailAddr } : null;
     return null;
   };
@@ -179,6 +186,7 @@ export default function NotificationsPage() {
     } else if (selectedChannel?.provider === 'DINGTALK') {
       if (!form.dingtalkWebhook) { toast.error('请输入钉钉 Webhook URL'); return; }
       target.webhookUrl = form.dingtalkWebhook;
+      if (form.dingtalkSecret) target.secret = form.dingtalkSecret;
     } else if (selectedChannel?.provider === 'EMAIL') {
       if (!form.emailAddr) { toast.error('请输入邮箱地址'); return; }
       target.email = form.emailAddr;
@@ -424,10 +432,17 @@ export default function NotificationsPage() {
           )}
 
           {selectedChannel?.provider === 'DINGTALK' && (
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Webhook URL</label>
-              <input type="text" value={form.dingtalkWebhook} onChange={(e) => setForm({ ...form, dingtalkWebhook: e.target.value })} placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
-              <p className="text-xs text-text-quaternary mt-1.5">在钉钉群中添加自定义机器人，获取 Webhook 地址</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Webhook URL</label>
+                <input type="text" value={form.dingtalkWebhook} onChange={(e) => setForm({ ...form, dingtalkWebhook: e.target.value })} placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
+                <p className="text-xs text-text-quaternary mt-1.5">在钉钉群中添加自定义机器人，获取 Webhook 地址</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">加签密钥（可选）</label>
+                <input type="text" value={form.dingtalkSecret} onChange={(e) => setForm({ ...form, dingtalkSecret: e.target.value })} placeholder="SEC开头的密钥字符串" className="w-full px-4 py-3 bg-muted border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50 transition-all text-text-primary placeholder:text-text-quaternary" />
+                <p className="text-xs text-text-quaternary mt-1.5">机器人安全设置「加签」选项下显示的 SEC 开头字符串，未启用加签可留空</p>
+              </div>
             </div>
           )}
 
