@@ -1,4 +1,5 @@
 import NextAuth from 'next-auth';
+import type { Provider } from 'next-auth/providers';
 import Credentials from 'next-auth/providers/credentials';
 import prisma from './prisma';
 import { verifyPassword } from './utils';
@@ -23,7 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     // 通行证（标准 OAuth2 / OIDC）登录（受 AUTH_OAUTH_ENABLED 开关控制）
     ...(oauthEnabled
-      ? [
+      ? ([
           {
             id: 'passport',
             name: '通行证',
@@ -51,7 +52,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               };
             },
           },
-        ]
+        ] as Provider[])
       : []),
     // 账号密码登录（受 AUTH_PASSWORD_ENABLED 开关控制）
     ...(passwordEnabled
